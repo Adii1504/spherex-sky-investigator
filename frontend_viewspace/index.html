@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPHEREx WhyLab - ViewSpace Astronomical Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo">
+        <span class="logo-title">VIEWSPACE</span>
+        <span class="logo-badge">SPHEREx WhyLab</span>
+      </div>
+    </div>
+    <div class="nav-center">
+      <div class="preset-selector-container">
+        <label for="presetSelect">Investigation:</label>
+        <select id="presetSelect" class="preset-select">
+          <option value="Barnards_Star" selected>Barnard's Star (NASA Real Level 2, ~10.4''/yr Proper Motion)</option>
+          <option value="WISE_0855">WISE 0855-0714 (NASA Real Level 2, Cold Rogue World)</option>
+          <option value="Epsilon_Indi_B">Epsilon Indi B (NASA Real Level 2, Brown Dwarf Binary)</option>
+          <option value="RW_Aurigae">RW Aurigae A (NASA Real Level 2, Classical T Tauri)</option>
+          <option value="R_Draconis">R Draconis (NASA Real Level 2, Mira Variable)</option>
+          <option value="synthetic_asteroid_sequence">Solar System Asteroid Discovery (4 Epochs)</option>
+          <option value="nasa_real_6bands">NASA Real SPHEREx 6-Band Composite (D1-D6)</option>
+        </select>
+        <button id="btnRunInvestigation" class="btn-primary">Scan & Detect</button>
+      </div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-link active">Interactives</span>
+      <span class="nav-link" id="btnUploadModal">Upload FITS</span>
+      <a href="/docs" target="_blank" class="nav-link docs-link">API Docs</a>
+      <span class="status-indicator" id="apiStatus"><span class="status-dot"></span> System Online</span>
+    </div>
+  </header>
+
+  <!-- Main Viewport Area -->
+  <main class="viewer-main">
+    <!-- Viewport Canvas & Layers -->
+    <div class="viewport-container" id="viewportContainer">
+      <!-- Toolbar Overlays (Top-Left) -->
+      <div class="viewport-toolbar">
+        <div class="tour-stops-dropdown">
+          <label>Tour Stops:</label>
+          <select id="tourStopSelect">
+            <option value="Barnards_Star" selected>Barnard's Star (10.4''/yr Proper Motion)</option>
+            <option value="WISE_0855">WISE 0855-0714 (Cold Rogue World)</option>
+            <option value="Epsilon_Indi_B">Epsilon Indi B (Brown Dwarf Binary)</option>
+            <option value="RW_Aurigae">RW Aurigae (T Tauri Star)</option>
+            <option value="R_Draconis">R Draconis (Mira Variable)</option>
+            <option value="asteroid">Asteroid 2025-SPX01</option>
+            <option value="about">About SPHEREx Survey</option>
+          </select>
+        </div>
+        <div class="view-controls">
+          <button class="ctrl-btn" id="btnResetView" title="Reset View">🏠</button>
+          <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
+          <button class="ctrl-btn" id="btnZoomOut" title="Zoom Out">−</button>
+          <button class="ctrl-btn" id="btnTogglePins" title="Toggle Hotspots">👁</button>
+          <button class="ctrl-btn" id="btnFitScreen" title="Fit to Screen">⛶</button>
+        </div>
+      </div>
+
+      <!-- Mode Selector Pills -->
+      <div class="layer-mode-bar">
+        <button class="mode-pill active" data-mode="composite">Multi-Wavelength RGB</button>
+        <button class="mode-pill" data-mode="blink">Blink Comparator</button>
+        <button class="mode-pill" data-mode="difference">Signed Difference (B − A)</button>
+        <button class="mode-pill" data-mode="diagnostic">Astrometric Trajectory</button>
+      </div>
+
+      <!-- Image Canvas Container -->
+      <div class="image-stage" id="imageStage">
+        <img id="primaryImage" class="main-image" src="/previews/SPX_INV_001_frame_01.png" alt="SPHEREx Field View">
+        <!-- SVG Pin Overlay Layer -->
+        <svg id="pinOverlay" class="pin-overlay" viewBox="0 0 128 128" preserveAspectRatio="none">
+          <!-- Dynamic hotspot pins injected by app.js -->
+        </svg>
+      </div>
+
+      <!-- Bottom Interactive Media Controls (for Blink/Difference mode) -->
+      <div class="bottom-controls" id="bottomControls">
+        <div class="blink-controls" id="blinkControls">
+          <button class="btn-ctrl" id="btnPlayPause">⏸ Pause</button>
+          <div class="speed-slider-wrap">
+            <span>Dwell Speed:</span>
+            <input type="range" id="blinkSpeed" min="0.5" max="5.0" step="0.5" value="2.0">
+            <span id="speedValue">2.0 fps</span>
+          </div>
+          <div class="epoch-stepper">
+            <button class="btn-step" id="btnPrevEpoch">◀</button>
+            <span id="epochLabel">Epoch 1 / 4</span>
+            <button class="btn-step" id="btnNextEpoch">▶</button>
+          </div>
+        </div>
+
+        <div class="difference-controls" id="diffControls" style="display: none;">
+          <span>Difference Pair:</span>
+          <select id="diffPairSelect">
+            <option value="1_to_2">Epoch 2 − Epoch 1</option>
+            <option value="2_to_3">Epoch 3 − Epoch 2</option>
+            <option value="3_to_4">Epoch 4 − Epoch 3</option>
+          </select>
+          <span class="diff-scale-info">Symmetric diverging scale (Coolwarm, centered on 0.0)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Side Information Drawer (ViewSpace Signature Drawer) -->
+    <aside class="side-drawer" id="sideDrawer">
+      <div class="drawer-header">
+        <div class="drawer-pagination">
+          <button class="btn-page" id="btnPrevDrawer">◀</button>
+          <span id="drawerPageIndicator">1 / 5</span>
+          <button class="btn-page" id="btnNextDrawer">▶</button>
+        </div>
+        <button class="btn-close-drawer" id="btnCloseDrawer">✕</button>
+      </div>
+
+      <div class="drawer-body">
+        <h2 class="target-title" id="targetTitle">Barnard's Star</h2>
+        <div class="target-subtitle" id="targetSubtitle">Fastest Known Stellar Proper Motion (~10.4''/yr)</div>
+
+        <!-- ViewSpace About This Target Section -->
+        <div class="drawer-section">
+          <h3>About This Target</h3>
+          <div class="info-field-list">
+            <div class="info-field-item">
+              <span class="info-field-label">Location:</span>
+              <span class="info-field-value" id="valLocationText">Constellation Ophiuchus (RA: 269.4464°, Dec: +4.7671°)</span>
+            </div>
+            <div class="info-field-item">
+              <span class="info-field-label">Distance from Earth:</span>
+              <span class="info-field-value" id="valDistanceText">5.96 light-years (2nd closest stellar system)</span>
+            </div>
+            <div class="info-field-item">
+              <span class="info-field-label">Image Size:</span>
+              <span class="info-field-value" id="valImageSizeText">3.0 arcminutes across (SPHEREx 6.2''/pixel sampling)</span>
+            </div>
+            <div class="info-field-item">
+              <span class="info-field-label">Observatories:</span>
+              <span class="info-field-value" id="valObservatoriesText">NASA SPHEREx (Detectors D1, D2, D3), Gaia DR3, CatWISE2020</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Badges -->
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Location (RA, Dec)</span>
+            <span class="meta-value" id="valCoords">269.4464°, +4.7671°</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Measured Motion</span>
+            <span class="meta-value highlight" id="valVelocity">10.39 arcsec/yr</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Signal-to-Noise (SNR)</span>
+            <span class="meta-value" id="valSNR">120.0 σ</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Hypothesis Decision</span>
+            <span class="badge-outcome verified" id="valOutcome">MOTION SUPPORTED</span>
+          </div>
+        </div>
+
+        <!-- Gaia DR3 Ground Truth Card -->
+        <div class="drawer-section" id="gaiaTruthSection">
+          <h3>Gaia DR3 Ground Truth Astrometry</h3>
+          <div class="truth-card">
+            <div class="truth-row">
+              <span class="truth-label">Catalogue Source:</span>
+              <span class="truth-val" id="truthSourceId">Gaia DR3 4472832130942575872</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Reference Epoch:</span>
+              <span class="truth-val" id="truthRefEpoch">2016.0</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">True Proper Motion:</span>
+              <span class="truth-val highlight" id="truthPM">10.393 ''/yr</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Measured Residual:</span>
+              <span class="truth-val" id="truthResidual">1.11''</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Verification:</span>
+              <span class="badge-outcome verified" id="truthQuality">GOOD_GAIA_SOLUTION</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description Paragraph -->
+        <div class="drawer-section">
+          <h3>Astronomical Analysis</h3>
+          <p id="targetDescription">
+            Barnard's Star is a nearby red dwarf star with the largest known proper motion of any star.
+            SPHEREx observations spanning 2025 to 2026 clearly capture its real celestial motion
+            (+9.0'' displacement in Declination), creating an unambiguous dipole signature in difference imaging
+            matching Gaia DR3 ground truth within sub-pixel accuracy.
+          </p>
+        </div>
+
+        <!-- Spectral / Observatories Breakdown -->
+        <div class="drawer-section">
+          <h3>SPHEREx Multi-Wavelength Observatories</h3>
+          <ul class="spectral-legend">
+            <li><span class="color-dot red"></span> <strong>Red (D5–D6, 4.4–5.0 µm):</strong> Thermal zodiacal dust & cold sub-stellar emission</li>
+            <li><span class="color-dot green"></span> <strong>Green (D3–D4, 1.6–3.8 µm):</strong> Water-ice, silicates, and stellar CO/CO2 absorption bands</li>
+            <li><span class="color-dot blue"></span> <strong>Blue (D1–D2, 0.75–1.6 µm):</strong> Reflected solar continuum & optical-to-NIR stellar flux</li>
+          </ul>
+        </div>
+
+        <!-- Interactive Tabs (Trajectory Diagnostic / SED Spectrum / Difference) -->
+        <div class="drawer-tabs">
+          <button class="drawer-tab active" data-tab="tabTrajectory">Trajectory Fit</button>
+          <button class="drawer-tab" data-tab="tabDifference">Difference Dipole</button>
+          <button class="drawer-tab" data-tab="tabSED">Photometric SED</button>
+          <button class="drawer-tab" data-tab="tabResiduals">Residuals & Data</button>
+        </div>
+
+        <div class="drawer-tab-content">
+          <!-- Tab 1: Trajectory Diagnostic -->
+          <div class="tab-pane active" id="tabTrajectory">
+            <div class="plot-container">
+              <img id="trajectoryPlot" src="/previews/real_targets/Barnards_Star/Barnards_Star_trajectory_diagnostic.png" alt="Astrometric Trajectory Diagnostic">
+            </div>
+            <p class="plot-caption">2-Panel Astrometric Analysis: Celestial motion track (left) and reserved epoch observed vs. predicted residual comparison against 2σ noise threshold (right).</p>
+          </div>
+
+          <!-- Tab 2: Difference Dipole -->
+          <div class="tab-pane" id="tabDifference">
+            <div class="plot-container">
+              <img id="dipolePlot" src="/previews/barnard_diff_2026_minus_2025.png" alt="Signed Difference Dipole">
+            </div>
+            <p class="plot-caption">Scientific Difference Image: Signed (B − A) showing unambiguous positive/negative dipole confirming proper motion between 2025 and 2026 epochs.</p>
+          </div>
+
+          <!-- Tab 3: SED Spectrum -->
+          <div class="tab-pane" id="tabSED">
+            <div class="plot-container">
+              <img id="sedPlot" src="/previews/real_targets/Barnards_Star/Barnards_Star_sed.png" alt="Spectral Energy Distribution">
+            </div>
+            <div class="sed-metrics">
+              <span>Spectral Index (α): <strong id="valSpectralIndex">−1.25</strong></span>
+              <button class="btn-secondary" id="btnRefetchSED">Re-measure SED</button>
+            </div>
+          </div>
+
+          <!-- Tab 4: Residuals Table -->
+          <div class="tab-pane" id="tabResiduals">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Epoch</th>
+                  <th>Observed UTC</th>
+                  <th>RA (°)</th>
+                  <th>Dec (°)</th>
+                  <th>Residual</th>
+                </tr>
+              </thead>
+              <tbody id="tableMeasurements">
+                <!-- Injected via app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Export / Citation -->
+        <div class="drawer-footer">
+          <button class="btn-export" id="btnExportJSON">Download JSON Report</button>
+          <span class="credit">Credit: NASA / IPAC / SPHEREx / Gaia DR3 / WhyLab Team</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Upload Modal -->
+  <div class="modal" id="uploadModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Upload SPHEREx FITS Cutouts</h3>
+        <button class="btn-close-modal" id="btnCloseModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Select multiple SPHEREx Level 2 MEF FITS files or astronomical image frames (.fits, .png, .jpg) to execute automated ingestion, reprojection, differencing, and hypothesis testing.</p>
+        <input type="file" id="fitsFileInput" multiple accept=".fits,.fits.gz,.fit,.png,.jpg,.jpeg,.tif,.tiff">
+        <div class="form-group">
+          <label>Target RA (optional):</label>
+          <input type="number" id="inputTargetRA" step="0.0001" placeholder="e.g. 150.006">
+        </div>
+        <div class="form-group">
+          <label>Target Dec (optional):</label>
+          <input type="number" id="inputTargetDec" step="0.0001" placeholder="e.g. 2.006">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnCancelUpload">Cancel</button>
+        <button class="btn-primary" id="btnSubmitUpload">Process & Analyze</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
