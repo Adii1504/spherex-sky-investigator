@@ -18,7 +18,7 @@ test('local empty search explains its limited coverage and offers live retry',()
   const html=renderToStaticMarkup(React.createElement(SearchResults,{mode:'live',search:{status:'empty',source:'local',result:{observations:[],warnings:[],coverage_summary:{source:'imported-local',complete:false}}}}));
   assert.match(html,/Downloaded real observations/);
   assert.match(html,/No downloaded observations cover/);
-  assert.match(html,/Try live archive/);
+  assert.match(html,/Refresh downloaded data/);
   assert.doesNotMatch(html,/No observations found for this query/);
 });
 

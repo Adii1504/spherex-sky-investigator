@@ -1,7 +1,7 @@
 // Aladin Lite v3 API: https://cds-astro.github.io/aladin-lite/
 // Browser-only lazy import keeps the reference survey separate from SPHEREx PNGs.
 import { DSS_MIRRORS, createSurveyLoader } from './referenceSurvey.js';
-export const REFERENCE_SURVEY = { id: import.meta.env?.VITE_HIPS_URL || DSS_MIRRORS[0], name: 'DSS2 colour', url: DSS_MIRRORS[0] + '/' };
+export const REFERENCE_SURVEY = { id: '/hips/dss-overview', name: 'DSS2 colour · bundled overview', url: '/hips/dss-overview/upstream-properties.txt' };
 import {createBodyLabels} from './skyLabels.js';
 
 export function targetCoordinates(target) {
@@ -26,7 +26,6 @@ export function supportsWebGL2() {
 
 export async function createSkyMap(element, { signal, onSelect, onBodySelect, onHover, onStatus, onCoordinate } = {}) {
   if (!supportsWebGL2()) throw new Error('This browser cannot provide WebGL2. Use the target list and coordinate search, or try a WebGL2-enabled browser.');
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('The reference sky survey is offline. The target catalogue and SPHEREx workspace remain available.');
   const { default: A } = await import('aladin-lite');
   await A.init;
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
@@ -62,8 +61,13 @@ export async function createSkyMap(element, { signal, onSelect, onBodySelect, on
     clickedSource = false;
   });
   // Readiness means metadata/layer loaded, not that every tile is cached.
-  const surveyLoader = createSurveyLoader(A, aladin, {
-    urls: [REFERENCE_SURVEY.id, ...DSS_MIRRORS], onStatus,
+  const bundled = new URL(REFERENCE_SURVEY.id, window.location.href).href;
+  const surveyStatus = (state, detail) => onStatus?.(state, state==='ready'
+    ? detail===bundled ? 'Using bundled real DSS sky imagery. Overview resolution; no external survey connection needed.' : 'Live DSS sky imagery connected.'
+    : detail);
+  const surveyLoader = createSurveyLoader(A, aladin, {urls:[bundled],onStatus:surveyStatus});
+  const liveLoader = createSurveyLoader(A, aladin, {
+    urls: [import.meta.env?.VITE_HIPS_URL || DSS_MIRRORS[0], ...DSS_MIRRORS, bundled], onStatus:surveyStatus,
   });
   surveyLoader.load();
   const hovered = source => onHover?.(source?.data?.target_id || null);
@@ -71,7 +75,8 @@ export async function createSkyMap(element, { signal, onSelect, onBodySelect, on
   aladin.on('objectHoveredStop', () => onHover?.(null));
 
   return {
-    reload: surveyLoader.load,
+    reload() { liveLoader.stop(); surveyLoader.load(); },
+    live() { surveyLoader.stop(); liveLoader.load(); },
     setFootprints(observations) {
       footprints.removeAll();
       for (const o of observations || []) {
@@ -149,6 +154,7 @@ export async function createSkyMap(element, { signal, onSelect, onBodySelect, on
       disposed = true;
       bodyLabels.dispose();
       surveyLoader.dispose();
+      liveLoader.dispose();
       // v3.8.2 has on(event, callback) but no public off method.
       aladin.on('click', null);
       aladin.on('objectClicked', null);

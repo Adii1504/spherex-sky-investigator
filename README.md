@@ -5,6 +5,11 @@ The root `render.yaml` configures one Free Docker web service; the image include
 the verified local observation dataset. Live archive availability and temporary
 investigation storage are explained in that guide.
 
+Supplied target searches use observation-epoch positions and open all 21 bundled
+FITS across five targets, including the imported astrometry and detection-screen
+metadata. Local data loads before optional background IRSA reconciliation. The
+Aladin overview is self-hosted real DSS imagery; live sky imagery is optional.
+
 GitHub commit `9c2e3bb` is integrated. Run `python -m whylab --port 8010` and open
 <http://127.0.0.1:8010/processing/> for its scientific processing viewer, or `/`
 for the sky explorer. See [GitHub processing integration](docs/github-processing-integration.md).

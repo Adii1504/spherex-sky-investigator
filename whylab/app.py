@@ -65,6 +65,12 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
         if isinstance(archive,IRSAArchive):
             archive.close()
     app = FastAPI(title="SPHEREx WhyLab", version="0.1.0", lifespan=lifespan)
+    @app.middleware('http')
+    async def fresh_application_shell(request, call_next):
+        response = await call_next(request)
+        if request.url.path in ('/', '/index.html') or (request.url.path.startswith('/api/') and 'application/json' in response.headers.get('content-type','')):
+            response.headers['Cache-Control'] = 'no-store'
+        return response
     app.state.jobs = jobs
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
     @app.exception_handler(APIError)
@@ -158,7 +164,9 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
 
     @app.get("/api/v1/health")
     def health():
-        return {"status": "ok", "capabilities": {k: "available" if a.available else "unavailable" for k, a in [("archive_access", archive), ("image_processing", sequence), ("motion_verification", motion)]}}
+        return {"status": "ok", 'build_revision':os.getenv('RENDER_GIT_COMMIT','local'),
+            'features':{'local_observations':True,'target_datasets':True,'archive_sync':True},
+            "capabilities": {k: "available" if a.available else "unavailable" for k, a in [("archive_access", archive), ("image_processing", sequence), ("motion_verification", motion)]}}
 
     @app.post('/api/v1/observations/search/local')
     def search_local(query: Search):
@@ -169,6 +177,20 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
             search_id = uuid.uuid4().hex
             searches[search_id] = (query, result)
         return public({'search_id':search_id, **result.model_dump(mode='json')})
+
+    @app.post('/api/v1/observations/search/target/{target_id}')
+    def search_target_dataset(target_id: str, query: Search):
+        sky_check(query)
+        try:
+            field = local_archive.target_query(target_id, query)
+        except KeyError:
+            raise APIError(404, 'target_dataset_unavailable', 'No supplied observation dataset exists for this target. Use coordinate search.')
+        result = local_archive.search(field, target_id=target_id)
+        with lock:
+            search_room()
+            search_id = uuid.uuid4().hex
+            searches[search_id] = (field, result)
+        return public({'search_id':search_id, 'query':field.model_dump(mode='json'), **result.model_dump(mode='json')})
 
     @app.post("/api/v1/observations/search")
     async def search(query: Search):
@@ -432,6 +454,9 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
     install_solar_system(app)
     from backend.main import app as processing_app
     app.mount("/processing", processing_app, name="scientific-processing")
+    @app.api_route('/api/{unknown:path}', methods=['GET','POST','PUT','DELETE','PATCH'])
+    def unknown_api(unknown: str):
+        raise APIError(404,'api_route_not_found','This API route is unavailable. Refresh after deploying the matching frontend and backend.')
     if (settings.frontend_dir / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")
     return app

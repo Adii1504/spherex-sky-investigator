@@ -147,7 +147,7 @@ export default function App() {
     const validation = validateSearch(fields); setInputs(fields); setErrors(validation.errors);
     setMode('live'); setView('sequence');
     if (!validation.query || health.status !== 'ready') { setDrawer('search'); return; }
-    runSearch(validation.query, 'live');
+    runSearch(validation.query, 'live', next.id);
   }
 
   function navigate(section) {
@@ -155,7 +155,10 @@ export default function App() {
     if (section === 'sky') { setView('sky'); setDrawer(null); return; }
     if (section === 'games') { setView('games'); setDrawer(null); return; }
     setView('sequence');
-    if (section === 'observations') setDrawer('observations');
+    if (section === 'observations') {
+      if (target && search.status === 'idle' && health.status === 'ready') searchTarget(target);
+      else setDrawer('observations');
+    }
     else {
       setDrawer(null);
       if (section === 'explore') {
@@ -175,7 +178,9 @@ export default function App() {
       requestAnimationFrame(() => document.getElementById(Object.keys(validation.errors)[0])?.focus());
       return;
     }
-    return runSearch(validation.query);
+    const currentTarget = catalogueTargets.find(item=>item.id===targetRef.current);
+    const isCatalogueField = currentTarget && validation.query.ra_deg===currentTarget.ra_deg && validation.query.dec_deg===currentTarget.dec_deg;
+    return runSearch(validation.query, mode, isCatalogueField ? currentTarget.id : null);
   }
 
   async function refreshArchive(searchId, ticket = syncOwner.current.start()) {
@@ -191,7 +196,7 @@ export default function App() {
     }
   }
 
-  async function runSearch(query, requestMode = mode) {
+  async function runSearch(query, requestMode = mode, datasetTargetId = null) {
     if (search.status === 'loading') return;
     const effectiveMode = requestMode === 'live' ? 'local' : requestMode;
     const syncTicket = syncOwner.current.start();
@@ -202,14 +207,17 @@ export default function App() {
     const fieldTargetId = linkedTarget && query.ra_deg === linkedTarget.ra_deg && query.dec_deg === linkedTarget.dec_deg ? linkedTarget.id : null;
     setSearch({ status: 'loading', result: null, query, error: null, targetId: fieldTargetId, source: effectiveMode });
     try {
-      const result = await searchObservations(query, { mode: effectiveMode, scenario, signal: ticket.signal });
+      const result = await searchObservations(query, { mode: effectiveMode, targetId:datasetTargetId, scenario, signal: ticket.signal });
       if (!ticket.isCurrent()) return;
-      setSearch({ status: result.observations.length ? 'success' : 'empty', result, query, error: null, targetId: fieldTargetId, source: effectiveMode });
+      const actualQuery = result.query || query;
+      if (result.query) setInputs(Object.fromEntries(['ra_deg','dec_deg','fov_arcmin'].map(key=>[key,String(actualQuery[key])])));
+      if (datasetTargetId) setSelected(result.observations.map(observation=>observation.id));
+      setSearch({ status: result.observations.length ? 'success' : 'empty', result, query:actualQuery, error: null, targetId: datasetTargetId || fieldTargetId, source: effectiveMode });
       setDrawer('observations');
       if (effectiveMode === 'local') void refreshArchive(result.search_id, syncTicket);
     } catch (error) {
       if (!ticket.isCurrent()) return;
-      setSearch({ status: 'error', result: null, query, error, targetId: fieldTargetId, source: effectiveMode }); setDrawer('observations');
+      setSearch({ status: 'error', result: null, query, error, targetId: datasetTargetId || fieldTargetId, source: effectiveMode }); setDrawer('observations');
     }
   }
 
@@ -319,9 +327,9 @@ export default function App() {
           {drawer === 'search' ? <SearchPanel inputs={inputs} onInputsChange={setInputs} errors={errors} onErrorsChange={setErrors}
             mode={mode} onModeChange={changeMode} scenario={scenario} onScenarioChange={changeScenario}
             loading={search.status === 'loading'} health={health} onSubmit={submitSearch} onReset={resetWorkspace} onClose={closeDrawer} />
-            : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={() => runSearch(search.query, fixture ? 'fixture' : 'remote')} onSearchLocal={() => runSearch(search.query, 'local')}
+            : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={() => runSearch(search.query, fixture ? 'fixture' : 'local', search.targetId)} onSearchLocal={() => runSearch(search.query, 'local',search.result?.coverage_summary?.target_id)}
               onSync={() => refreshArchive(search.result.search_id)}
-              onSearchLocalField={query => {setInputs(Object.fromEntries(Object.entries(query).map(([key,value])=>[key,String(value)])));runSearch(query, 'local');}} selected={selected}
+              onSearchLocalField={(query,datasetId) => {setInputs(Object.fromEntries(Object.entries(query).map(([key,value])=>[key,String(value)])));runSearch(query, 'local',datasetId);}} selected={selected}
               onSelectedChange={changeSelection} onGenerate={generate} busy={!!busy || search.status === 'loading'} canProcess={canProcess} onClose={closeDrawer} />}
         </div>}
         <SkyViewer frames={frames} index={index} onIndexChange={changeIndex} playing={playing} onPlayingChange={setPlaying}

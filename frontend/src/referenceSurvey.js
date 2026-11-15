@@ -25,7 +25,7 @@ export function createSurveyLoader(A, aladin, { urls = DSS_MIRRORS, onStatus,
         if (settled || disposed || generation !== run) return;
         settled = true;
         cancel(timer);
-        if (success) onStatus?.('ready');
+        if (success) onStatus?.('ready', candidates[index]);
         else attempt(index + 1);
       }
       timer = schedule(() => finish(false), timeoutMs);
@@ -39,5 +39,6 @@ export function createSurveyLoader(A, aladin, { urls = DSS_MIRRORS, onStatus,
     }
     attempt(0);
   }
-  return { load, dispose() { disposed = true; generation++; cancel(timer); } };
+  return { load, stop() { generation++; cancel(timer); },
+    dispose() { disposed = true; generation++; cancel(timer); } };
 }

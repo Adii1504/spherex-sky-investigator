@@ -31,10 +31,10 @@ uses the same origin as the API, so no deployment-specific API URL is necessary.
 
 ## Investigations and availability
 
-The reference sky uses the same DSS2 colour survey through official IRSA, ESA
-and CDS mirrors, with JPEG tiles and automatic failover on errors or timeouts.
-This browser-side imagery service is separate from SPHEREx archive search.
-Mirror success is not a guarantee that every future tile request will succeed.
+The reference sky starts from a self-hosted DSS2 colour overview. Optional live
+imagery uses official IRSA, ESA and CDS mirrors, with JPEG tiles and automatic
+failover to the bundled overview. This imagery is separate from SPHEREx archive
+search. A live mirror response does not guarantee every future tile will load.
 
 Live investigation workflow: archive search -> select observations -> build
 sequence -> save investigation -> reserve independent exposures -> verify/export.
@@ -64,7 +64,27 @@ are appended within the observation limit. Matching metadata is not a scientific
 confirmation or a proof of identical file bytes. Unavailable/partial checks retry
 after 60 seconds on an active visible page, and on reconnect/focus; a manual
 **Sync with IRSA** button is also available. No server polling runs without a
-browser session. **Try live archive** explicitly requests a remote-only search.
+browser session. The UI refreshes downloaded data and checks IRSA through the
+non-blocking sync path; it does not replace the local panel with an upstream 502.
+
+Selecting a supplied catalogue target now calls
+`/api/v1/observations/search/target/{target_id}`. That workflow opens all approved
+observations associated by the supplied manifest, exposes their imported metadata,
+and uses the mean direction of supplied per-observation positions for the processing
+field. It does not reinterpret the static catalogue reference position as a modern
+observed position. Each file retains its own predicted position and WCS coverage.
+
+The default Aladin background is now a bundled, real DSS2 colour overview under
+`/hips/dss-overview/`, about 2 MB including all 768 order-3 tiles. It needs no
+external tile server. **Load live sky imagery** optionally tries the live mirrors;
+if all fail it falls back to the bundled survey. The imagery is coarse at high
+zoom and is explicitly separate from the SPHEREx FITS observations. Credits,
+source checksum and the original survey properties are bundled with the data.
+
+The application shell and API use no-store caching. `/api/v1/health` reports
+the deployment revision when Render provides `RENDER_GIT_COMMIT`, plus supported
+workflow features. A new frontend served by an old running backend can return
+405 for a new POST route; deploy/restart the backend and refresh the page together.
 
 Search sessions, jobs and saved investigations are currently in memory. They
 expire on server restart or free-service sleep. Export evidence before leaving;

@@ -1,6 +1,7 @@
 """Explicit searches of approved local FITS; never an automatic archive fallback."""
 import hashlib
 import re
+import math
 from datetime import timezone
 
 import astropy.units as u
@@ -62,9 +63,21 @@ class LocalArchive:
     def __init__(self, registry, settings):
         self.registry, self.settings = registry, settings
 
-    def search(self, query):
+    def target_query(self, target_id, query):
+        positions = [entry.get('predicted_position') for entry in self.registry.entries.values()
+            if entry.get('target_id') == target_id and entry.get('predicted_position')]
+        if not positions:
+            raise KeyError(target_id)
+        vectors = [SkyCoord(p['ra_deg']*u.deg,p['dec_deg']*u.deg).cartesian.xyz.value for p in positions]
+        x,y,z = [sum(v[i] for v in vectors)/len(vectors) for i in range(3)]
+        return query.model_copy(update={'ra_deg':math.degrees(math.atan2(y,x))%360,
+            'dec_deg':math.degrees(math.atan2(z,math.hypot(x,y)))})
+
+    def search(self, query, target_id=None):
         observations, skipped, fields = [], 0, {}
         for identifier, entry in self.registry.entries.items():
+            if target_id and entry.get('target_id') != target_id:
+                continue
             try:
                 path, _ = self.registry.resolve(identifier)
                 if not entry.get('sha256'):
@@ -73,15 +86,16 @@ class LocalArchive:
                     image = hdus['IMAGE']
                     height, width = image.shape
                     wcs = WCS(image.header).celestial
-                    target_id = entry.get('target_id')
-                    if target_id and target_id not in fields:
+                    entry_target = entry.get('target_id')
+                    if entry_target and entry_target not in fields:
                         centre = wcs.pixel_to_world((width-1)/2, (height-1)/2).icrs
-                        fields[target_id] = {'target_id':target_id,
-                            'label':entry.get('dataset', {}).get('adopted_astrometry', {}).get('target_name') or target_id,
+                        fields[entry_target] = {'target_id':entry_target,
+                            'label':entry.get('dataset', {}).get('adopted_astrometry', {}).get('target_name') or entry_target,
                             'ra_deg':float(centre.ra.deg), 'dec_deg':float(centre.dec.deg),
                             'fov_arcmin':query.fov_arcmin}
                     x, y = wcs.world_to_pixel(SkyCoord(query.ra_deg*u.deg, query.dec_deg*u.deg))
-                    if not (-.5 <= x < width-.5 and -.5 <= y < height-.5):
+                    inside = bool(-.5 <= x < width-.5 and -.5 <= y < height-.5)
+                    if not inside and not target_id:
                         continue
                     date = image.header.get('DATE-OBS', hdus[0].header.get('DATE-OBS'))
                     scale = str(image.header.get('TIMESYS', hdus[0].header.get('TIMESYS', 'UTC'))).lower()
@@ -105,7 +119,10 @@ class LocalArchive:
                         citation='Imported real observation; supplied source association is unconfirmed.'),
                     file_wavelength_um=entry.get('observation', {}).get('file_wavelength_um'),
                     quality={'sha256': entry['sha256'], 'source': 'imported-local',
-                        'label': filename, 'coverage': 'query centre inside image'}))
+                        'label': filename, 'coverage': 'query centre inside image' if inside else 'supplied target association; query centre outside image',
+                        'query_centre_inside':inside, 'dataset':entry.get('dataset'),
+                        'predicted_position':entry.get('predicted_position'),
+                        'association_status':entry.get('provenance_status')}))
             except (OSError, ValueError, KeyError, TypeError):
                 skipped += 1
         observations.sort(key=lambda item: (item.observed_at, item.id))
@@ -113,12 +130,14 @@ class LocalArchive:
         return SearchResult(observations=observations[:self.settings.max_observations],
             coverage_summary={'source':'imported-local', 'complete':False,
                 'count':min(count,self.settings.max_observations), 'matching_files':count,
-                'files_skipped':skipped, 'coverage_rule':'query centre inside actual FITS image',
+                'files_skipped':skipped, 'target_id':target_id,
+                'coverage_rule':'supplied target dataset; per-image coverage reported' if target_id else 'query centre inside actual FITS image',
                 'archive_contacted':False, 'available_fields':list(fields.values())}, warnings=[
                 'Only downloaded local observations were searched; this is not a live archive result.',
-                'Images contain the query centre; coverage of the entire requested field is not guaranteed.',
+                'Per-image geometry and supplied target associations are reported; full-field coverage is not guaranteed.' if target_id else 'Images contain the query centre; coverage of the entire requested field is not guaranteed.',
                 'Source association and motion remain unconfirmed. UTC is assumed when TIMESYS is absent.',
-            ] + ([f'{skipped} local files could not be checked.'] if skipped else []))
+            ] + (['Target dataset selected using supplied observation-epoch positions, not static catalogue coordinates.'] if target_id else [])
+              + ([f'{skipped} local files could not be checked.'] if skipped else []))
 
     def cutout(self, observation, sky):
         path, entry = self.registry.resolve(observation.id)

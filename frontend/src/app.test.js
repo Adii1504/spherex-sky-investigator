@@ -259,6 +259,29 @@ test('downloaded results appear before archive sync, which preserves checked obs
   assert.match(text(),/1 local products matched; 1 additional archive observations added/);
 });
 
+test('opening Observations for a supplied target uses its dataset and observation-epoch query', async () => {
+  const sample=await fixtureSearch('success',undefined,0);
+  const observations=sample.observations.map(o=>({...o,release:'imported-local'}));
+  const actualQuery={ra_deg:269.44621,dec_deg:4.76895,fov_arcmin:2};
+  let requested=false;
+  globalThis.fetch=async (url,options)=>{
+    if(url.endsWith('/health')) return new Response(JSON.stringify({status:'ok',capabilities:{archive_access:'available',image_processing:'available',motion_verification:'available'}}));
+    if(url.endsWith('/observations/search/target/barnards-star')) {
+      requested=true;
+      assert.notEqual(JSON.parse(options.body).dec_deg,actualQuery.dec_deg);
+      return new Response(JSON.stringify({search_id:'target-data',query:actualQuery,observations,coverage_summary:{source:'imported-local',target_id:'barnards-star'},warnings:[]}));
+    }
+    return new Response(JSON.stringify({message:'test archive unavailable'}),{status:503});
+  };
+  await click('Retry connection');
+  await click(all('.sky-target-list button').find(b=>b.textContent.includes('Barnard')));
+  await click('Observations');
+  assert.equal(requested,true);
+  assert.equal(all('.observation-choice input').length,observations.length);
+  assert.ok(all('.observation-choice input').every(input=>input.checked));
+  assert.match(document.querySelector('.query-summary').textContent,/4.76895/);
+});
+
 test('Game Zone opens offline, switches games, pauses and returns to the science workspace', async () => {
   await click('Game Zone');await settle(100);
   assert.ok(document.querySelector('#game-zone'));

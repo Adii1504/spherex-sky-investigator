@@ -29,8 +29,10 @@ export async function getHealth(signal) {
   return health;
 }
 
-export async function searchObservations(query, { mode = 'live', scenario = 'success', signal } = {}) {
-  const result = mode === 'fixture' ? await fixtureSearch(scenario, signal) : await request(mode === 'local' ? '/observations/search/local' : '/observations/search', query, signal);
+export async function searchObservations(query, { mode = 'live', targetId, scenario = 'success', signal } = {}) {
+  const route = mode === 'local' && targetId ? `/observations/search/target/${encodeURIComponent(targetId)}`
+    : mode === 'local' ? '/observations/search/local' : '/observations/search';
+  const result = mode === 'fixture' ? await fixtureSearch(scenario, signal) : await request(route, query, signal);
   if (typeof result?.search_id !== 'string' || !Array.isArray(result.observations)
     || !result.coverage_summary || typeof result.coverage_summary !== 'object'
     || Array.isArray(result.coverage_summary) || !Array.isArray(result.warnings)) {

@@ -7,6 +7,8 @@ export function MetadataDetails({ observation, metadata = {}, fixture = false, c
   const provenance = observation.provenance;
   const sourceUrl = safeProvenanceUrl(provenance?.source_url);
   const quality = observation.quality;
+  const supplied = quality?.dataset;
+  const prediction = quality?.predicted_position;
   const positionWavelength = Object.hasOwn(metadata, 'position_wavelength_um')
     ? metadata.position_wavelength_um : observation.position_wavelength_um;
   const qualityAssessment = typeof quality?.usable === 'boolean'
@@ -27,6 +29,13 @@ export function MetadataDetails({ observation, metadata = {}, fixture = false, c
         ? <a href={sourceUrl} target="_blank" rel="noreferrer">{provenance.archive} ↗<span className="sr-only"> (opens in a new tab)</span></a>
         : provenance?.archive ?? 'Unavailable'}</dd></div>
     </dl>
+    {supplied && <section className="supplied-observation-metadata"><h4>Supplied observation metadata</h4><dl className="metadata-list">
+      <div><dt>Source catalogue</dt><dd>{supplied.adopted_astrometry?.source_catalogue} · {supplied.adopted_astrometry?.source_id}</dd></div>
+      <div><dt>Reference epoch</dt><dd>{supplied.adopted_astrometry?.ref_epoch_jyear ?? 'Unavailable'}</dd></div>
+      <div><dt>Position at observation</dt><dd>{prediction ? `RA ${prediction.ra_deg}°, Dec ${prediction.dec_deg}°` : 'Unavailable'}</dd></div>
+      <div><dt>Supplied coverage</dt><dd>{supplied.coverage?.status ?? 'Unavailable'} · coverage is not detection</dd></div>
+      <div><dt>Detection screen</dt><dd>{supplied.detection_screen?.verdict ?? 'Unavailable'} · peak SNR {supplied.detection_screen?.snr_peak ?? 'Unavailable'}</dd></div>
+    </dl><p>{supplied.propagation?.note}</p><p>{supplied.detection_screen?.method_note}</p></section>}
     <details className="metadata-extra">
       <summary>Product identity and quality metadata</summary>
       <dl className="metadata-list">

@@ -1,0 +1,8 @@
+{
+  "source": "https://irsa.ipac.caltech.edu/data/hips/CDS/DSS2/color",
+  "allsky_sha256": "9c9434b990fc6cc661cc17171cf52805fdb8679515b7c884abed914d5a6054dd",
+  "tiles": 768,
+  "tile_pixels": 64,
+  "order": 3,
+  "note": "Real survey thumbnail data; overview resolution only."
+}

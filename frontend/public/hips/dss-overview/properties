@@ -1,0 +1,15 @@
+creator_did = ivo://spherexplore/local-dss-overview
+obs_title = Bundled DSS2 colour overview
+obs_description = Low-resolution DSS2 colour Allsky thumbnails, repackaged for offline navigation. Not SPHEREx data.
+obs_copyright = DSS STScI/NASA; colour composition CDS; original service NASA/IPAC IRSA
+hips_version = 1.4
+hips_release_date = 2026-11-15T00:00:00Z
+hips_status = public master clonableOnce
+dataproduct_type = image
+hips_frame = equatorial
+hips_order = 3
+hips_order_min = 3
+hips_tile_width = 64
+hips_tile_format = jpeg
+hips_pixel_cut = 0 255
+moc_sky_fraction = 1

@@ -43,8 +43,8 @@ export function SearchResults({ search, mode, onClear, onRetry, onSync, onSearch
       {!fixture && onSearchLocal && <p><button type="button" onClick={onSearchLocal} disabled={busy || searching}>Search downloaded observations</button><small>Search this same position in the real imported FITS files, without contacting IRSA.</small></p>}
       {outage&&<p className="local-dataset-recovery"><a href={`${API_BASE}/processing/`} target="_blank" rel="noreferrer">Open real imported FITS datasets ↗</a><small>Opens the local processing viewer in a new tab. Choose a real target dataset; your archive query stays here.</small></p>}
     </div>}
-    {local && !search.error && <div className="actions"><button type="button" onClick={onRetry} disabled={busy || searching}>Try live archive</button><a href={`${API_BASE}/processing/`} target="_blank" rel="noreferrer">Browse bundled target datasets ↗</a></div>}
-    {local && !searching && !!search.result?.coverage_summary?.available_fields?.length && <div className="local-field-choices"><p>Search a downloaded target field instead (changes the sky coordinates to an actual image centre):</p><div className="actions">{search.result.coverage_summary.available_fields.map(field => <button key={field.target_id} disabled={busy} onClick={() => onSearchLocalField?.({ra_deg:field.ra_deg,dec_deg:field.dec_deg,fov_arcmin:field.fov_arcmin})}>{field.label}</button>)}</div></div>}
+    {local && !search.error && <div className="actions"><button type="button" onClick={onRetry} disabled={busy || searching}>Refresh downloaded data</button><a href={`${API_BASE}/processing/`} target="_blank" rel="noreferrer">Browse bundled target datasets ↗</a></div>}
+    {local && !searching && !!search.result?.coverage_summary?.available_fields?.length && <div className="local-field-choices"><p>Open a supplied target dataset (uses its observation-epoch positions):</p><div className="actions">{search.result.coverage_summary.available_fields.map(field => <button key={field.target_id} disabled={busy} onClick={() => onSearchLocalField?.({ra_deg:field.ra_deg,dec_deg:field.dec_deg,fov_arcmin:field.fov_arcmin},field.target_id)}>{field.label}</button>)}</div></div>}
     {!!search.result?.warnings?.length && <details className="search-warnings" open><summary>Search warnings ({search.result.warnings.length})</summary><ul className="warning-list">{search.result.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
     {search.result && <details className="coverage"><summary>Coverage summary</summary><pre>{JSON.stringify(search.result.coverage_summary, null, 2)}</pre></details>}
     {!!observations.length && <>
@@ -53,7 +53,7 @@ export function SearchResults({ search, mode, onClear, onRetry, onSync, onSearch
         {selected.length > 100 && <p className="field-error">Select no more than 100 observations.</p>}
       </div>
       <ul className="observation-list">{observations.map(observation => <li className={`observation-row ${selected.includes(observation.id) ? 'selected' : ''}`} key={observation.id}>
-        <label className="observation-choice"><input type="checkbox" disabled={busy} checked={selected.includes(observation.id)} onChange={event => toggle(observation.id, event.target.checked)} /><span><strong>{formatUtc(observation.observed_at)}</strong><small>{observation.product_id}</small></span></label>
+        <label className="observation-choice"><input type="checkbox" disabled={busy} checked={selected.includes(observation.id)} onChange={event => toggle(observation.id, event.target.checked)} /><span><strong>{formatUtc(observation.observed_at)}</strong><small>{observation.quality?.label || observation.product_id}</small></span></label>
         <details><summary>Metadata · Detector {observation.detector ?? 'Unavailable'}</summary><MetadataDetails observation={observation} fixture={fixture} compact /></details>
       </li>)}</ul>
     </>}
