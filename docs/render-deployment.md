@@ -31,6 +31,11 @@ uses the same origin as the API, so no deployment-specific API URL is necessary.
 
 ## Investigations and availability
 
+The reference sky uses the same DSS2 colour survey through official IRSA, ESA
+and CDS mirrors, with JPEG tiles and automatic failover on errors or timeouts.
+This browser-side imagery service is separate from SPHEREx archive search.
+Mirror success is not a guarantee that every future tile request will succeed.
+
 Live investigation workflow: archive search -> select observations -> build
 sequence -> save investigation -> reserve independent exposures -> verify/export.
 If IRSA returns HTTP 502, the first step cannot complete. Moving hosts does not

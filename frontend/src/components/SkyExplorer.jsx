@@ -56,6 +56,7 @@ export function SkyExplorer({ targets = [], selectedTarget = null, onSelectTarge
     const controller = new AbortController();
     let instance;
     let timer;
+    let surveyReported = false;
     setStatus('loading'); setError(''); setMapReady(false);
     const ready = mapFactory(container.current, {
       signal: controller.signal,
@@ -65,6 +66,7 @@ export function SkyExplorer({ targets = [], selectedTarget = null, onSelectTarge
       onCoordinate: setClickedCoordinate,
       onStatus: (next, message) => {
         if (controller.signal.aborted) return;
+        surveyReported = true;
         setStatus(next); setError(message || '');
       },
     });
@@ -78,7 +80,7 @@ export function SkyExplorer({ targets = [], selectedTarget = null, onSelectTarge
       setMapReady(true);
       value.setTargets(targetList.current);
       // Reference tiles can arrive after the Aladin controls become ready.
-      setStatus(current => current === 'loading' ? 'ready' : current);
+      if (!surveyReported) setStatus(current => current === 'loading' ? 'ready' : current);
     }).catch(reason => {
       clearTimeout(timer);
       if (!controller.signal.aborted) { setStatus('error'); setError(reason.message || 'The sky survey could not initialize.'); }
@@ -169,7 +171,7 @@ export function SkyExplorer({ targets = [], selectedTarget = null, onSelectTarge
         </div>
         <p className="sky-survey-credit" role="status">{clickedCoordinate ? `Last sky position: RA ${clickedCoordinate.ra.toFixed(6)}°, Dec ${clickedCoordinate.dec.toFixed(6)}° · ICRS · coordinate only; no object identified` : 'Click empty sky to read ICRS coordinates. A sky position alone does not identify an object.'}</p>
         {offline && <p className="sky-offline-notice" role="status">Network offline. New reference tiles and live archive searches may be unavailable; previously loaded tiles may remain visible.</p>}
-        <p className="sky-survey-credit">Data: SIMBAD / CDS; SPHEREx / NASA-IPAC IRSA; DSS imagery STScI/NASA, coloured by CDS, served by ESA. <a href="/notices/THIRD_PARTY.txt" target="_blank" rel="noreferrer">Software licenses and attribution</a></p>
+        <p className="sky-survey-credit">Data: SIMBAD / CDS; SPHEREx / NASA-IPAC IRSA; DSS imagery STScI/NASA, coloured by CDS, served through IRSA / ESA / CDS mirrors. <a href="/notices/THIRD_PARTY.txt" target="_blank" rel="noreferrer">Software licenses and attribution</a></p>
         <LocalProducts onLoad={setLocalProducts} />
         {onAddTarget && <CatalogSearch coordinate={clickedCoordinate || coordinate} onAddTarget={onAddTarget} />}
         <section className="sky-target-catalogue" aria-labelledby="sky-targets-title">

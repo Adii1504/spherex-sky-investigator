@@ -183,6 +183,18 @@ test('initialization failure preserves catalogue selection, shows retry and does
   assert.equal(calls, 2);
 });
 
+test('map controls becoming ready do not hide a pending survey load', async () => {
+  let report;
+  const factory = async (_element, options) => {
+    report = options.onStatus; report('loading');
+    return {setTargets(){}, select(){}, dispose(){}};
+  };
+  await act(async () => root.render(React.createElement(SkyExplorer, {targets, mapFactory: factory})));
+  assert.match(document.querySelector('.sky-map-state').textContent, /Loading Aladin/);
+  await act(async () => report('ready'));
+  assert.equal(document.querySelector('.sky-map-state'), null);
+});
+
 test('late initialization after unmount disposes its map instead of publishing stale content', async () => {
   let finish;
   let disposed = 0;

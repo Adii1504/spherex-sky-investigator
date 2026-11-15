@@ -1,6 +1,7 @@
 // Aladin Lite v3 API: https://cds-astro.github.io/aladin-lite/
 // Browser-only lazy import keeps the reference survey separate from SPHEREx PNGs.
-export const REFERENCE_SURVEY = { id: import.meta.env?.VITE_HIPS_URL || 'https://skies.esac.esa.int/DSSColor', name: 'DSS2 colour', url: 'https://skies.esac.esa.int/DSSColor/' };
+import { DSS_MIRRORS, createSurveyLoader } from './referenceSurvey.js';
+export const REFERENCE_SURVEY = { id: import.meta.env?.VITE_HIPS_URL || DSS_MIRRORS[0], name: 'DSS2 colour', url: DSS_MIRRORS[0] + '/' };
 import {createBodyLabels} from './skyLabels.js';
 
 export function targetCoordinates(target) {
@@ -60,28 +61,17 @@ export async function createSkyMap(element, { signal, onSelect, onBodySelect, on
     if (!clickedSource && !event.isDragging && Number.isFinite(event.ra) && Number.isFinite(event.dec)) onCoordinate?.({ra: event.ra, dec: event.dec});
     clickedSource = false;
   });
-  let surveyTimer;
-  // HiPS callback means its metadata/layer loaded, not that every tile is cached.
-  const loadSurvey = () => {
-    clearTimeout(surveyTimer);
-    surveyTimer = setTimeout(() => { if (!disposed) onStatus?.('error', 'Reference survey loading timed out. Check the network and retry.'); }, 20000);
-    const survey = A.HiPS(REFERENCE_SURVEY.id, {
-      successCallback: () => { clearTimeout(surveyTimer); if (!disposed) onStatus?.('ready'); },
-      errorCallback: () => {
-        clearTimeout(surveyTimer);
-        if (!disposed) onStatus?.('error', 'The reference survey could not load. Check the network and retry; SPHEREx searches use the separate backend.');
-      },
-    });
-    // Pinned v3.8.2 returns the HiPS object here, not a Promise.
-    aladin.setBaseImageLayer(survey);
-  };
-  loadSurvey();
+  // Readiness means metadata/layer loaded, not that every tile is cached.
+  const surveyLoader = createSurveyLoader(A, aladin, {
+    urls: [REFERENCE_SURVEY.id, ...DSS_MIRRORS], onStatus,
+  });
+  surveyLoader.load();
   const hovered = source => onHover?.(source?.data?.target_id || null);
   aladin.on('objectHovered', hovered);
   aladin.on('objectHoveredStop', () => onHover?.(null));
 
   return {
-    reload: loadSurvey,
+    reload: surveyLoader.load,
     setFootprints(observations) {
       footprints.removeAll();
       for (const o of observations || []) {
@@ -158,7 +148,7 @@ export async function createSkyMap(element, { signal, onSelect, onBodySelect, on
     dispose() {
       disposed = true;
       bodyLabels.dispose();
-      clearTimeout(surveyTimer);
+      surveyLoader.dispose();
       // v3.8.2 has on(event, callback) but no public off method.
       aladin.on('click', null);
       aladin.on('objectClicked', null);
