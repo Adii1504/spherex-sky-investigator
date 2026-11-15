@@ -1,0 +1,6 @@
+target_name,resolved_name,target_component,ra_deg,dec_deg,coordinate_frame,coordinate_epoch_jyear,epoch_status,pmra_mas_yr,pmdec_mas_yr,proper_motion_unit,coordinate_error_major_mas,coordinate_error_minor_mas,coordinate_error_angle_deg,coordinate_error_unit,coordinate_reference,coordinate_wavelength,coordinate_source
+Barnard's Star,NAME Barnard's star,Star,269.4520769586187,4.693364966576667,ICRS,,UNVERIFIED,-801.551,10362.394,mas/year,0.026200000196695328,0.028999999165534973,90.0,mas,2020yCat.1350....0G,O,SIMBAD Harvard mirror
+Epsilon Indi B,* eps Ind B,Combined Ba/Bb system,331.04414658852124,-56.782844195116105,ICRS,,UNVERIFIED,3981.977,-2466.832,mas/year,0.504800021648407,0.4675999879837036,90.0,mas,2020yCat.1350....0G,O,SIMBAD Harvard mirror
+WISE 0855,WISEA J085510.74-071442.5,WISE 0855,133.81890825,-7.247048000000001,ICRS,,UNVERIFIED,-8123.7,673.2,mas/year,,,,mas,2021ApJS..253....7K,Y,SIMBAD Harvard mirror
+RW Aurigae,V* RW Aur,RW Aur system,76.95652603458333,30.401438173888888,ICRS,,UNVERIFIED,7.23,-20.33,mas/year,3.309999942779541,2.0,90.0,mas,2007A&A...474..653V,O,SIMBAD Harvard mirror
+R Draconis,V* R Dra,Star,248.16761083295,66.75497941722,ICRS,,UNVERIFIED,-20.643,6.149,mas/year,0.06689999997615814,0.06599999964237213,90.0,mas,2020yCat.1350....0G,O,SIMBAD Harvard mirror

@@ -1,0 +1,9 @@
+.venv/
+.idea/
+__pycache__/
+*.pyc
+*.part
+*.tmp
+*.fits
+spherex_data/data/superseded/
+final_dataset/fits/

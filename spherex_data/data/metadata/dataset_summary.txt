@@ -1,0 +1,9 @@
+Files scanned: 25
+Included: 21
+Excluded: 4
+Per target: Barnards_Star=5, Epsilon_Indi_B=3, RW_Aurigae=4, R_Draconis=4, WISE_0855=5
+Coverage: EDGE=1, INSIDE_IMAGE=20
+Pipeline versions: ['v27']
+Distinct processing batches: 17
+Duplicate groups: 1
+Targets with no included file: none
