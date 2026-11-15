@@ -42,6 +42,17 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
     lock = threading.RLock()
     output = settings.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
+    from .fits_preview.routes import ProductRegistry
+    from .local_archive import LocalArchive
+    local_archive = LocalArchive(fits_registry or ProductRegistry.load(output.parent), settings)
+
+    def retrieve_cutout(observation, sky):
+        if observation.release == 'imported-local':
+            return local_archive.cutout(observation, sky)
+        return archive.cutout(observation, sky)
+
+    class VerificationArchive:
+        cutout = staticmethod(retrieve_cutout)
     @asynccontextmanager
     async def lifespan(app):
         yield
@@ -145,6 +156,16 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
     def health():
         return {"status": "ok", "capabilities": {k: "available" if a.available else "unavailable" for k, a in [("archive_access", archive), ("image_processing", sequence), ("motion_verification", motion)]}}
 
+    @app.post('/api/v1/observations/search/local')
+    def search_local(query: Search):
+        sky_check(query)
+        result = local_archive.search(query)
+        with lock:
+            search_room()
+            search_id = uuid.uuid4().hex
+            searches[search_id] = (query, result)
+        return public({'search_id':search_id, **result.model_dump(mode='json')})
+
     @app.post("/api/v1/observations/search")
     async def search(query: Search):
         sky_check(query)
@@ -201,7 +222,8 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
     @app.post("/api/v1/sequences", status_code=202)
     def make_sequence(value: Selection):
         observations = selected(value)
-        require(archive, "archive_access")
+        if any(o.release != 'imported-local' for o in observations):
+            require(archive, "archive_access")
         require(sequence, "image_processing")
         selection_key = value.model_copy(update={'observation_ids':sorted(value.observation_ids)}).model_dump_json()
         with lock:
@@ -232,7 +254,7 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
             # Keep just two downloads in flight; do not eagerly fetch all 100 results.
             with ThreadPoolExecutor(max_workers=2,thread_name_prefix='whylab-download') as downloads:
                 remaining = iter(observations)
-                pending = deque((observation,downloads.submit(archive.cutout,observation,sky)) for observation in islice(remaining,2))
+                pending = deque((observation,downloads.submit(retrieve_cutout,observation,sky)) for observation in islice(remaining,2))
                 while pending:
                     if time.monotonic() >= deadline: raise TimeoutError("Sequence retrieval deadline exceeded")
                     observation,future = pending.popleft()
@@ -251,7 +273,7 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
                     observation = next(remaining,None)
                     if observation is not None:
                         if deadline-time.monotonic() > reserve:
-                            pending.append((observation,downloads.submit(archive.cutout,observation,sky)))
+                            pending.append((observation,downloads.submit(retrieve_cutout,observation,sky)))
                         else:
                             warnings.append('Retrieval time budget reached; remaining observations omitted. Select fewer observations to retrieve the rest.')
             if not cutouts:
@@ -347,10 +369,11 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
         exposures = [indexed[i].exposure_id for i in ids]
         if len(set(ids)) != len(ids) or len(set(exposures)) != len(exposures): raise APIError(422, "exposure_overlap", "Training and reserved observations must have unique, disjoint exposure identities")
         require(motion, "motion_verification")
-        require(archive, "archive_access")
+        if any(indexed[i].release != 'imported-local' for i in ids):
+            require(archive, "archive_access")
         sky = Sky(**found["selection"].model_dump(include={"ra_deg", "dec_deg", "fov_arcmin"}))
         def operation():
-            result = VerificationResult.model_validate(motion.verify([indexed[i] for i in value.training_observation_ids], [indexed[i] for i in value.reserved_observation_ids], sky, archive))
+            result = VerificationResult.model_validate(motion.verify([indexed[i] for i in value.training_observation_ids], [indexed[i] for i in value.reserved_observation_ids], sky, VerificationArchive()))
             return public({**result.model_dump(mode="json"), **value.model_dump()})
         with lock:
             if len(found["verification_jobs"]) >= settings.cache_size: raise APIError(503, "cache_full", "Verification history full")

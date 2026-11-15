@@ -44,6 +44,16 @@ repair that upstream response. Real bundled targets remain accessible through
 replacement. Verification may correctly report insufficient evidence when dates,
 wavelengths, quality or independent exposures are unsuitable.
 
+The observations panel offers **Search downloaded observations** after a live
+search error. It calls `/api/v1/observations/search/local` explicitly, filters the
+approved local FITS by actual image WCS and observation dates, and creates a normal
+search session. Sequence generation, saving, held-out verification and evidence
+export use the same workflow, retrieving the checksum-verified local bytes.
+Local results are always labelled and claim no archive completeness. Coverage
+means the search centre is inside an image, not that the entire field is covered.
+If nothing matches, buttons offer actual centres of the five bundled target
+fields; only clicking one changes the query. No nearest-target substitution occurs.
+
 Search sessions, jobs and saved investigations are currently in memory. They
 expire on server restart or free-service sleep. Export evidence before leaving;
 old investigation links are not durable. Uploaded files and generated previews

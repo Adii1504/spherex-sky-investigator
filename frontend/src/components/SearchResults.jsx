@@ -4,9 +4,10 @@ import { formatUtc } from '../search.js';
 import { MetadataDetails } from './MetadataDetails.jsx';
 import {API_BASE} from '../api.js';
 
-export function SearchResults({ search, mode, onClear, onRetry, selected = [], onSelectedChange, onGenerate, busy = false, canProcess = false, onClose }) {
+export function SearchResults({ search, mode, onClear, onRetry, onSearchLocal, onSearchLocalField, selected = [], onSelectedChange, onGenerate, busy = false, canProcess = false, onClose }) {
   const fixture = mode === 'fixture';
   const searching = search.status === 'loading';
+  const local = search.source === 'local' || search.result?.coverage_summary?.source === 'imported-local';
   const observations = search.result?.observations || [];
   const selectedObservations = observations.filter(observation => selected.includes(observation.id));
   const validDates = selectedObservations.filter(observation => observation.observed_at != null && observation.observed_at !== '')
@@ -20,18 +21,23 @@ export function SearchResults({ search, mode, onClear, onRetry, selected = [], o
   return <section className="results-panel" id="observations" aria-labelledby="results-title" aria-busy={searching}>
     <div className="section-heading"><div><p className="eyebrow">02 / THE OBSERVATIONAL RECORD</p><h2 id="results-title" tabIndex="-1">Observations</h2></div>{onClose && <button type="button" className="icon-button" onClick={onClose} aria-label="Close observations">×</button>}</div>
     {fixture && <p className="fixture-notice"><strong>{FIXTURE_LABEL}</strong></p>}
+    {local && <p className="local-dataset-notice"><strong>Downloaded real observations · local search</strong><br/>Only imported files covering this sky position are searched. This is not a live IRSA result.</p>}
     <div role="status" aria-atomic="true">
       {search.status === 'idle' && <p className="muted">Open Sky regions and search to find dated observations.</p>}
-      {searching && <p>Searching {fixture ? 'the selected fixture' : 'the archive'}…</p>}
-      {search.status === 'empty' && (search.result?.coverage_summary?.collections_failed?.length ? <p><strong>Archive coverage is incomplete.</strong> No observations were returned by the collections that responded. Retry to check unavailable collections.</p> : <p><strong>No observations found for this query.</strong> Try different coordinates or a different field size.</p>)}
+      {searching && <p>Searching {fixture ? 'the selected fixture' : local ? 'downloaded observations' : 'the archive'}…</p>}
+      {search.status === 'empty' && local && <p><strong>No downloaded observations cover this position and date range.</strong> Choose a bundled target in the local processing viewer, or retry the live archive later.</p>}
+      {search.status === 'empty' && !local && (search.result?.coverage_summary?.collections_failed?.length ? <p><strong>Archive coverage is incomplete.</strong> No observations were returned by the collections that responded. Retry to check unavailable collections.</p> : <p><strong>No observations found for this query.</strong> Try different coordinates or a different field size.</p>)}
       {search.status === 'success' && <p>{observations.length} observations returned. Choose observations for your sequence.</p>}
     </div>
     {search.query && <p className="query-summary">RA {search.query.ra_deg}° · Dec {search.query.dec_deg}° · FOV {search.query.fov_arcmin} arcmin</p>}
     {search.error && <div className="error-box" role="alert"><h3>{outage?'IRSA archive search is temporarily unavailable':'Search could not complete'}</h3><p>{search.error.message}</p>{outage&&<p>The archive returned HTTP {search.error.details.upstream_status}. You do not need to restart the platform. Imported local FITS datasets remain available while the remote service recovers.</p>}{search.error.code && <p>Error: <code>{search.error.code}</code></p>}
       {search.error.details != null && <details><summary>Backend error details</summary><pre>{JSON.stringify(search.error.details, null, 2)}</pre></details>}
       <p>Your search values are preserved. Retry or edit the query.{!fixture && ' No fixture has been substituted.'}</p><button type="button" onClick={onRetry} disabled={busy}>Retry search</button>
+      {!fixture && onSearchLocal && <p><button type="button" onClick={onSearchLocal} disabled={busy || searching}>Search downloaded observations</button><small>Search this same position in the real imported FITS files, without contacting IRSA.</small></p>}
       {outage&&<p className="local-dataset-recovery"><a href={`${API_BASE}/processing/`} target="_blank" rel="noreferrer">Open real imported FITS datasets ↗</a><small>Opens the local processing viewer in a new tab. Choose a real target dataset; your archive query stays here.</small></p>}
     </div>}
+    {local && !search.error && <div className="actions"><button type="button" onClick={onRetry} disabled={busy || searching}>Try live archive</button><a href={`${API_BASE}/processing/`} target="_blank" rel="noreferrer">Browse bundled target datasets ↗</a></div>}
+    {local && !searching && !!search.result?.coverage_summary?.available_fields?.length && <div className="local-field-choices"><p>Search a downloaded target field instead (changes the sky coordinates to an actual image centre):</p><div className="actions">{search.result.coverage_summary.available_fields.map(field => <button key={field.target_id} disabled={busy} onClick={() => onSearchLocalField?.({ra_deg:field.ra_deg,dec_deg:field.dec_deg,fov_arcmin:field.fov_arcmin})}>{field.label}</button>)}</div></div>}
     {!!search.result?.warnings?.length && <details className="search-warnings" open><summary>Search warnings ({search.result.warnings.length})</summary><ul className="warning-list">{search.result.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
     {search.result && <details className="coverage"><summary>Coverage summary</summary><pre>{JSON.stringify(search.result.coverage_summary, null, 2)}</pre></details>}
     {!!observations.length && <>

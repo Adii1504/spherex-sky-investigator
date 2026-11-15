@@ -64,7 +64,7 @@ export default function App() {
   const frames = sequence?.previews || [];
   const fixture = mode === 'fixture';
   const capabilities = health.data?.capabilities;
-  const canProcess = fixture || (capabilities?.archive_access === 'available' && capabilities?.image_processing === 'available');
+  const canProcess = fixture || ((search.source === 'local' || capabilities?.archive_access === 'available') && capabilities?.image_processing === 'available');
   const target = catalogueTargets.find(item => item.id === targetId) || null;
 
   useEffect(() => {
@@ -172,15 +172,15 @@ export default function App() {
     clearSequence(); setSelected([]); setBusy(''); setMessage(''); setOperationError(null);
     const linkedTarget = getCatalogueTarget(targetRef.current);
     const fieldTargetId = linkedTarget && query.ra_deg === linkedTarget.ra_deg && query.dec_deg === linkedTarget.dec_deg ? linkedTarget.id : null;
-    setSearch({ status: 'loading', result: null, query, error: null, targetId: fieldTargetId });
+    setSearch({ status: 'loading', result: null, query, error: null, targetId: fieldTargetId, source: requestMode });
     try {
       const result = await searchObservations(query, { mode: requestMode, scenario, signal: ticket.signal });
       if (!ticket.isCurrent()) return;
-      setSearch({ status: result.observations.length ? 'success' : 'empty', result, query, error: null, targetId: fieldTargetId });
+      setSearch({ status: result.observations.length ? 'success' : 'empty', result, query, error: null, targetId: fieldTargetId, source: requestMode });
       setDrawer('observations');
     } catch (error) {
       if (!ticket.isCurrent()) return;
-      setSearch({ status: 'error', result: null, query, error, targetId: fieldTargetId }); setDrawer('observations');
+      setSearch({ status: 'error', result: null, query, error, targetId: fieldTargetId, source: requestMode }); setDrawer('observations');
     }
   }
 
@@ -290,7 +290,8 @@ export default function App() {
           {drawer === 'search' ? <SearchPanel inputs={inputs} onInputsChange={setInputs} errors={errors} onErrorsChange={setErrors}
             mode={mode} onModeChange={changeMode} scenario={scenario} onScenarioChange={changeScenario}
             loading={search.status === 'loading'} health={health} onSubmit={submitSearch} onReset={resetWorkspace} onClose={closeDrawer} />
-            : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={submitSearch} selected={selected}
+            : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={submitSearch} onSearchLocal={() => runSearch(search.query, 'local')}
+              onSearchLocalField={query => {setInputs(Object.fromEntries(Object.entries(query).map(([key,value])=>[key,String(value)])));runSearch(query, 'local');}} selected={selected}
               onSelectedChange={changeSelection} onGenerate={generate} busy={!!busy || search.status === 'loading'} canProcess={canProcess} onClose={closeDrawer} />}
         </div>}
         <SkyViewer frames={frames} index={index} onIndexChange={changeIndex} playing={playing} onPlayingChange={setPlaying}
