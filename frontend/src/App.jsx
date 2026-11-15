@@ -328,7 +328,6 @@ export default function App() {
             mode={mode} onModeChange={changeMode} scenario={scenario} onScenarioChange={changeScenario}
             loading={search.status === 'loading'} health={health} onSubmit={submitSearch} onReset={resetWorkspace} onClose={closeDrawer} />
             : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={() => runSearch(search.query, fixture ? 'fixture' : 'local', search.targetId)} onSearchLocal={() => runSearch(search.query, 'local',search.result?.coverage_summary?.target_id)}
-              onSync={() => refreshArchive(search.result.search_id)}
               onSearchLocalField={(query,datasetId) => {setInputs(Object.fromEntries(Object.entries(query).map(([key,value])=>[key,String(value)])));runSearch(query, 'local',datasetId);}} selected={selected}
               onSelectedChange={changeSelection} onGenerate={generate} busy={!!busy || search.status === 'loading'} canProcess={canProcess} onClose={closeDrawer} />}
         </div>}

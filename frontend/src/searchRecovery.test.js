@@ -14,11 +14,11 @@ test('archive outage preserves the query and offers explicitly local real datase
   assert.match(html,/Search downloaded observations/);
 });
 
-test('local empty search explains its limited coverage and offers live retry',()=>{
+test('local empty search explains its limited coverage without introductory diagnostics',()=>{
   const html=renderToStaticMarkup(React.createElement(SearchResults,{mode:'live',search:{status:'empty',source:'local',result:{observations:[],warnings:[],coverage_summary:{source:'imported-local',complete:false}}}}));
-  assert.match(html,/Downloaded real observations/);
+  assert.doesNotMatch(html,/Downloaded real observations/);
   assert.match(html,/No downloaded observations cover/);
-  assert.match(html,/Refresh downloaded data/);
+  assert.doesNotMatch(html,/Refresh downloaded data|Sync with IRSA|Search warnings/);
   assert.doesNotMatch(html,/No observations found for this query/);
 });
 

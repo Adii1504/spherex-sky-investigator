@@ -62,8 +62,7 @@ product filename (including detector and version), preserving local IDs, origina
 FITS bytes, selections and existing investigation evidence. New remote products
 are appended within the observation limit. Matching metadata is not a scientific
 confirmation or a proof of identical file bytes. Unavailable/partial checks retry
-after 60 seconds on an active visible page, and on reconnect/focus; a manual
-**Sync with IRSA** button is also available. No server polling runs without a
+after 60 seconds on an active visible page, and on reconnect/focus. No server polling runs without a
 browser session. The UI refreshes downloaded data and checks IRSA through the
 non-blocking sync path; it does not replace the local panel with an upstream 502.
 
@@ -80,6 +79,13 @@ external tile server. **Load live sky imagery** optionally tries the live mirror
 if all fail it falls back to the bundled survey. The imagery is coarse at high
 zoom and is explicitly separate from the SPHEREx FITS observations. Credits,
 source checksum and the original survey properties are bundled with the data.
+
+The observations panel opens directly into selection and the observation list.
+Introductory local-data notices, sync diagnostics, successful-query coordinates,
+dataset shortcuts and expanded search-warning/coverage blocks are omitted from
+that view. Background reconciliation continues; observation metadata and exported
+scientific evidence still retain their source and limitations. Empty searches
+keep dataset choices so users can recover without losing the actual query.
 
 The application shell and API use no-store caching. `/api/v1/health` reports
 the deployment revision when Render provides `RENDER_GIT_COMMIT`, plus supported

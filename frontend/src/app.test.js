@@ -96,7 +96,7 @@ test('offline initial state stays live, presets remain disabled, and validation 
 
 test('fixture search, selection, queued processing, metadata, player and viewer controls work together', async () => {
   await fixtureReady();
-  assert.match(text(), /3 observations returned/);
+  assert.equal(all('.observation-choice input').length,3);
   assert.match(text(), /Development fixture — not real SPHEREx data/);
   assert.equal(button('Generate sequence →').disabled, true);
   for (const checkbox of all('.observation-choice input')) await click(checkbox);
@@ -249,14 +249,14 @@ test('downloaded results appear before archive sync, which preserves checked obs
   await value('#ra_deg','12');await value('#dec_deg','-5');
   await click(all('button').find(b=>b.textContent.includes('Search observations')));
   assert.equal(all('.observation-choice input').length,observations.length);
-  assert.match(text(),/Checking IRSA in the background/);
+  assert.equal(document.querySelector('.archive-sync-status'),null);
   await click(all('.observation-choice input')[0]);
   const extra={...observations[0],id:'new-remote',release:'spherex_dr1'};
   await act(async()=>finishSync(new Response(JSON.stringify({search_id:'local-first',observations:[...observations,extra],
     coverage_summary:{source:'local-and-archive',archive_matches:1,archive_added:1,archive_coverage:{complete:true}},warnings:[]}))));
   assert.equal(all('.observation-choice input').length,observations.length+1);
   assert.equal(all('.observation-choice input')[0].checked,true);
-  assert.match(text(),/1 local products matched; 1 additional archive observations added/);
+  assert.equal(all('.observation-choice input').filter(input=>input.checked).length,1);
 });
 
 test('opening Observations for a supplied target uses its dataset and observation-epoch query', async () => {
@@ -279,7 +279,8 @@ test('opening Observations for a supplied target uses its dataset and observatio
   assert.equal(requested,true);
   assert.equal(all('.observation-choice input').length,observations.length);
   assert.ok(all('.observation-choice input').every(input=>input.checked));
-  assert.match(document.querySelector('.query-summary').textContent,/4.76895/);
+  await click(all('button').find(b=>b.textContent.includes('Sky regions')));
+  assert.equal(document.querySelector('#dec_deg').value,'4.76895');
 });
 
 test('Game Zone opens offline, switches games, pauses and returns to the science workspace', async () => {
