@@ -54,6 +54,18 @@ means the search centre is inside an image, not that the entire field is covered
 If nothing matches, buttons offer actual centres of the five bundled target
 fields; only clicking one changes the query. No nearest-target substitution occurs.
 
+Normal searches now use that local endpoint first by default. Once those results
+are visible, the browser calls `/api/v1/observations/search/{search_id}/sync` in
+the background. A separate bounded network worker checks IRSA without occupying
+the scientific worker. The same search session is reconciled by exact pipeline
+product filename (including detector and version), preserving local IDs, original
+FITS bytes, selections and existing investigation evidence. New remote products
+are appended within the observation limit. Matching metadata is not a scientific
+confirmation or a proof of identical file bytes. Unavailable/partial checks retry
+after 60 seconds on an active visible page, and on reconnect/focus; a manual
+**Sync with IRSA** button is also available. No server polling runs without a
+browser session. **Try live archive** explicitly requests a remote-only search.
+
 Search sessions, jobs and saved investigations are currently in memory. They
 expire on server restart or free-service sleep. Export evidence before leaving;
 old investigation links are not durable. Uploaded files and generated previews

@@ -63,8 +63,9 @@ function InvestigationPanel({ frames, sequence, query, groups, onGroupsChange, o
   const reservedCount = assigned.filter(observation => groups[observation.id] === 'reserved').length;
   const duplicateIds = new Set(assigned.map(observation => observation.id)).size !== assigned.length;
   const overlap = duplicateIds || exposureConflict(observations, groups);
+  const localOnly = assigned.length > 0 && assigned.every(o => o.release === 'imported-local');
   const canVerify = !busy && !fixture && sequence && trainCount >= 3 && reservedCount >= 1
-    && !overlap && capabilities?.archive_access === 'available' && capabilities?.motion_verification === 'available';
+    && !overlap && (localOnly || capabilities?.archive_access === 'available') && capabilities?.motion_verification === 'available';
 
   return <>
     <section className="panel-section">
@@ -100,7 +101,7 @@ function InvestigationPanel({ frames, sequence, query, groups, onGroupsChange, o
     <section className="panel-section">
       {fixture && <p className="fixture-notice">Development fixtures exercise the viewer. Motion verification requires live observations.</p>}
       {!fixture && capabilities?.motion_verification !== 'available' && <p className="muted">Motion verification is unavailable. Check backend capabilities.</p>}
-      {!fixture && capabilities?.archive_access !== 'available' && <p className="muted">Archive access is required for verification.</p>}
+      {!fixture && !localOnly && capabilities?.archive_access !== 'available' && <p className="muted">Archive access is required for remote observation verification.</p>}
       <button className="primary" type="button" disabled={!canVerify} onClick={onVerify}>Run exploratory verification</button>
       <p className="muted">Review the returned assumptions and limitations before interpreting any result.</p>
     </section>

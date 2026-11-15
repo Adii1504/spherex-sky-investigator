@@ -39,6 +39,15 @@ export async function searchObservations(query, { mode = 'live', scenario = 'suc
   return result;
 }
 
+export async function syncObservations(searchId, signal) {
+  const result = await request(`/observations/search/${encodeURIComponent(searchId)}/sync`, {}, signal);
+  if (result?.search_id !== searchId || !Array.isArray(result.observations) || !Array.isArray(result.warnings)
+      || result.coverage_summary?.source !== 'local-and-archive') {
+    throw new ApiError('Archive sync returned an invalid response. Local observations remain available.', {code:'invalid_response'});
+  }
+  return result;
+}
+
 export function formatUtc(value) {
   if (value == null || value === '') return 'Unavailable';
   const date = new Date(value);

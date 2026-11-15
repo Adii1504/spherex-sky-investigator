@@ -11,16 +11,16 @@ const fields = [
 
 export function SearchPanel({ inputs, onInputsChange, errors, onErrorsChange, mode, onModeChange,
   scenario, onScenarioChange, loading, health, onSubmit, onReset, onClose }) {
-  const blocked = mode === 'live' && health.data?.capabilities.archive_access !== 'available';
-  const reason = health.status === 'checking' ? 'Checking archive availability.'
+  const blocked = mode === 'live' && health.status !== 'ready';
+  const reason = health.status === 'checking' ? 'Connecting to your observation backend.'
     : health.status === 'error' ? 'The backend is not connected. Retry its connection or explicitly choose development fixtures.'
-      : 'Archive search is unavailable. The backend needs its archive adapter enabled.';
+      : 'The observation backend is unavailable.';
 
   return <section className="search-panel" id="search" aria-labelledby="search-title">
     <div className="section-heading"><div><p className="eyebrow">01 / CHOOSE YOUR FIELD</p><h2 id="search-title" tabIndex="-1">Sky regions</h2></div>{onClose && <button type="button" className="icon-button" onClick={onClose} aria-label="Close sky regions">×</button>}</div>
-    <p className="muted">Search a patch of sky using ICRS coordinates. Every returned observation keeps its provenance.</p>
+    <p className="muted">Search downloaded observations first using ICRS coordinates. IRSA is checked in the background; every observation keeps its provenance.</p>
     <fieldset className="mode-picker"><legend>Data source</legend>
-      <label><input type="radio" name="data-mode" value="live" checked={mode === 'live'} onChange={() => onModeChange('live')} /> Live backend</label>
+      <label><input type="radio" name="data-mode" value="live" checked={mode === 'live'} onChange={() => onModeChange('live')} /> Real data · downloaded first</label>
       <label><input type="radio" name="data-mode" value="fixture" checked={mode === 'fixture'} onChange={() => onModeChange('fixture')} /> Development fixtures</label>
     </fieldset>
     {mode === 'fixture' && <div className="fixture-notice"><strong>{FIXTURE_LABEL}</strong><p>Fictional responses and sample images for testing the interface.</p>

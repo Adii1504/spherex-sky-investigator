@@ -45,6 +45,9 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
     from .fits_preview.routes import ProductRegistry
     from .local_archive import LocalArchive
     local_archive = LocalArchive(fits_registry or ProductRegistry.load(output.parent), settings)
+    # Archive recovery must not occupy the scientific processing worker.
+    sync_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='archive-sync')
+    sync_slot = threading.BoundedSemaphore(1)
 
     def retrieve_cutout(observation, sky):
         if observation.release == 'imported-local':
@@ -57,6 +60,7 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
     async def lifespan(app):
         yield
         jobs.close()
+        sync_pool.shutdown(wait=True, cancel_futures=True)
         from .archive import IRSAArchive
         if isinstance(archive,IRSAArchive):
             archive.close()
@@ -218,6 +222,41 @@ def create_app(settings=None, archive=None, sequence=None, motion=None, fits_reg
             while len(search_keys)>settings.cache_size:
                 search_keys.popitem(last=False)
         return public({"search_id": search_id, **result.model_dump(mode="json")})
+
+    @app.post('/api/v1/observations/search/{search_id}/sync')
+    async def sync_local_search(search_id: str):
+        require(archive, 'archive_access')
+        with lock:
+            found = searches.get(search_id)
+            if found is None:
+                raise APIError(404, 'search_not_found', 'Search session expired; search again.')
+            query, previous = found
+            if previous.coverage_summary.get('source') not in ('imported-local', 'local-and-archive'):
+                raise APIError(422, 'invalid_selection', 'Only local-first searches can be synced.')
+        if not sync_slot.acquire(blocking=False):
+            raise APIError(429, 'sync_busy', 'An archive check is already running; local observations remain available.')
+        try:
+            future = sync_pool.submit(archive.search, query)
+        except BaseException:
+            sync_slot.release()
+            raise
+        future.add_done_callback(lambda _: sync_slot.release())
+        try:
+            remote = SearchResult.model_validate(await asyncio.wrap_future(future))
+            if len(remote.observations)>settings.max_observations or len({o.id for o in remote.observations})!=len(remote.observations):
+                raise ValueError('Invalid archive result identities or count')
+            for observation in remote.observations:
+                TrustedRetriever(settings.trusted_hosts).validate(observation.provenance.source_url)
+        except Exception:
+            # The existing local search is untouched, including any saved evidence.
+            raise APIError(503, 'archive_sync_unavailable', 'IRSA could not be checked. Your downloaded observations remain ready; retry archive sync later.')
+        from .local_archive import align_results
+        result = align_results(previous, remote, settings.max_observations)
+        with lock:
+            if search_id not in searches:
+                raise APIError(404, 'search_not_found', 'Search session expired; search again.')
+            searches[search_id] = (query, result)
+        return public({'search_id':search_id, **result.model_dump(mode='json')})
 
     @app.post("/api/v1/sequences", status_code=202)
     def make_sequence(value: Selection):

@@ -196,7 +196,8 @@ test('live API contract stub completes save, independent verification and eviden
   const output = { outcome: 'insufficient_evidence', assumptions: ['Test assumption'], limitations: ['Synthetic test only'], warnings: [], measurements: { test_value: 0 }, processing_version: 'test-only' };
   globalThis.fetch = async (url, options) => {
     if (url.endsWith('/health')) return new Response(JSON.stringify({ status: 'ok', capabilities: { archive_access: 'available', image_processing: 'available', motion_verification: 'available' } }));
-    if (url.endsWith('/observations/search')) return new Response(JSON.stringify({ search_id: 'test_live_search', observations, coverage_summary: { count: 4 }, warnings: ['Synthetic HTTP test only'] }));
+    if (url.endsWith('/observations/search/local')) return new Response(JSON.stringify({ search_id: 'test_live_search', observations, coverage_summary: { count: 4, source:'imported-local' }, warnings: ['Synthetic HTTP test only'] }));
+    if (url.endsWith('/test_live_search/sync')) return new Response(JSON.stringify({message:'Test archive unavailable'}), {status:503});
     if (url.endsWith('/sequences')) { selection = JSON.parse(options.body); return new Response('{"job_id":"test_sequence"}', { status: 202 }); }
     if (url.endsWith('/jobs/test_sequence')) return new Response(JSON.stringify({ status: 'succeeded', progress: null, result: {
       search_id: 'test_live_search', observation_ids: selection.observation_ids,
@@ -231,6 +232,31 @@ test('live API contract stub completes save, independent verification and eviden
   await click('Download evidence JSON');
   assert.equal(evidenceRequests, 1);
   assert.match(text(), /Evidence JSON downloaded/);
+});
+
+test('downloaded results appear before archive sync, which preserves checked observations', async () => {
+  const sample = await fixtureSearch('success', undefined, 0);
+  const observations = sample.observations.map(o=>({...o,release:'imported-local'}));
+  let finishSync;
+  globalThis.fetch = async url => {
+    if(url.endsWith('/health')) return new Response(JSON.stringify({status:'ok',capabilities:{archive_access:'available',image_processing:'available',motion_verification:'available'}}));
+    if(url.endsWith('/observations/search/local')) return new Response(JSON.stringify({search_id:'local-first',observations,coverage_summary:{source:'imported-local',complete:false},warnings:[]}));
+    if(url.endsWith('/local-first/sync')) return new Promise(resolve=>{finishSync=resolve;});
+    return new Response('{}',{status:404});
+  };
+  await click('Retry connection');
+  await click(all('button').find(b=>b.textContent.includes('Sky regions')));
+  await value('#ra_deg','12');await value('#dec_deg','-5');
+  await click(all('button').find(b=>b.textContent.includes('Search observations')));
+  assert.equal(all('.observation-choice input').length,observations.length);
+  assert.match(text(),/Checking IRSA in the background/);
+  await click(all('.observation-choice input')[0]);
+  const extra={...observations[0],id:'new-remote',release:'spherex_dr1'};
+  await act(async()=>finishSync(new Response(JSON.stringify({search_id:'local-first',observations:[...observations,extra],
+    coverage_summary:{source:'local-and-archive',archive_matches:1,archive_added:1,archive_coverage:{complete:true}},warnings:[]}))));
+  assert.equal(all('.observation-choice input').length,observations.length+1);
+  assert.equal(all('.observation-choice input')[0].checked,true);
+  assert.match(text(),/1 local products matched; 1 additional archive observations added/);
 });
 
 test('Game Zone opens offline, switches games, pauses and returns to the science workspace', async () => {

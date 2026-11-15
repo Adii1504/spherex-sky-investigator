@@ -12,6 +12,52 @@ from astropy.wcs import WCS
 from .models import Cutout, Observation, Provenance, SearchResult
 
 
+def align_results(local, remote, limit):
+    """Match exact pipeline-product names; never infer identity from proximity."""
+    def product(observation):
+        name = (observation.quality or {}).get('label') or observation.product_id
+        match = re.search(r'(level2_\d{4}W\d{2}_[0-9][A-Z]_\d{4}_[1-4]D[1-6]_spx_l2b(?:_retry)?-v[\w.-]+\.fits)$', name)
+        return match[1] if match else None
+
+    by_product = {product(o):o for o in remote.observations if product(o)}
+    observations, matched, used = [], 0, set()
+    for observation in local.observations:
+        found = by_product.get(product(observation)) if product(observation) else None
+        if found:
+            used.add(found.id)
+            if observation.release == 'imported-local':
+                matched += 1
+                observation = observation.model_copy(update={'quality':{
+                    **(observation.quality or {}), 'archive_match':{
+                        'product_id':found.product_id, 'source_url':found.provenance.source_url,
+                        'method':'exact pipeline product identity; file bytes and source identity not independently verified'}}})
+        observations.append(observation)
+    known = {o.id for o in observations}
+    known_products = {product(o) for o in observations if product(o)}
+    additional = []
+    for observation in remote.observations:
+        identity = product(observation)
+        if observation.id in used or observation.id in known or identity and identity in known_products:
+            continue
+        additional.append(observation)
+        known.add(observation.id)
+        if identity:
+            known_products.add(identity)
+    room = max(0, limit-len(observations))
+    observations.extend(additional[:room])
+    truncated = len(additional)>room
+    return SearchResult(observations=observations, coverage_summary={
+        **local.coverage_summary, 'source':'local-and-archive', 'archive_contacted':True,
+        'complete':bool(remote.coverage_summary.get('complete')) and not truncated,
+        'count':len(observations), 'archive_matches':matched,
+        'archive_added':min(room,len(additional)), 'archive_coverage':remote.coverage_summary,
+    }, warnings=[
+        'Downloaded observations were loaded first and reconciled with IRSA by exact pipeline product identity.',
+        'Local file bytes are retained; metadata matches do not verify source identification or file equality.',
+        'Downloaded images contain the query centre; full-field coverage is not guaranteed.',
+    ] + remote.warnings + (['Combined observation limit reached.'] if truncated else []))
+
+
 class LocalArchive:
     def __init__(self, registry, settings):
         self.registry, self.settings = registry, settings

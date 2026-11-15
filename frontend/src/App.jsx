@@ -11,7 +11,7 @@ import { TargetObservationSummary } from './components/TargetObservationSummary.
 import { targetCatalogue, getCatalogueTarget, hasCatalogueCoordinates, targetIdFromSearch, searchWithTarget } from './data/targetCatalogue.js';
 import { useHealth } from './hooks/useHealth.js';
 import { request } from './api.js';
-import { INITIAL_INPUTS, searchObservations, validateSearch } from './search.js';
+import { INITIAL_INPUTS, searchObservations, syncObservations, validateSearch } from './search.js';
 import { FIXTURE_LABEL } from './fixtures/developmentData.js';
 import { buildSequence, createRequestOwner, getEvidence, makeSelection, missingPreviewIds, saveInvestigation, verificationIssues, verifyInvestigation } from './workflow.js';
 
@@ -61,6 +61,8 @@ export default function App() {
   const targetRef = useRef(targetId);
   const owner = useRef(null);
   if (!owner.current) owner.current = createRequestOwner();
+  const syncOwner = useRef(null);
+  if (!syncOwner.current) syncOwner.current = createRequestOwner();
   const frames = sequence?.previews || [];
   const fixture = mode === 'fixture';
   const capabilities = health.data?.capabilities;
@@ -73,7 +75,16 @@ export default function App() {
     return () => window.removeEventListener('popstate', pop);
   }, []);
 
-  useEffect(() => () => owner.current.cancel(), []);
+  useEffect(() => () => {owner.current.cancel();syncOwner.current.cancel();}, []);
+  useEffect(() => {
+    if (!search.result?.search_id || !['unavailable','partial'].includes(search.sync?.status)) return;
+    const timer = setTimeout(() => {
+      if (document.visibilityState !== 'hidden') refreshArchive(search.result.search_id);
+    }, 60000);
+    const resume = () => refreshArchive(search.result.search_id);
+    window.addEventListener('online', resume); window.addEventListener('focus', resume);
+    return () => {clearTimeout(timer);window.removeEventListener('online',resume);window.removeEventListener('focus',resume);};
+  }, [search.result?.search_id, search.sync?.status]);
   useEffect(() => {
     if (!playing || compareMode === 'blink' || frames.length < 2) return;
     const timer = setInterval(() => setIndex(value => (value + 1) % frames.length), 1200 / speed);
@@ -97,6 +108,7 @@ export default function App() {
   }
 
   function clearResults() {
+    syncOwner.current.cancel();
     owner.current.cancel(); setBusy(''); clearSequence(); setSelected([]);
     setSearch(emptySearch); setOperationError(null); setMessage(''); setDrawer('search');
   }
@@ -119,6 +131,7 @@ export default function App() {
   function selectTarget(id, writeHistory = true) {
     const next = catalogueTargets.find(item => item.id === id) || null;
     if (targetRef.current !== (next?.id || null)) {
+      syncOwner.current.cancel();
       owner.current.cancel(); clearSequence(); setSearch(emptySearch); setSelected([]);
       setBusy(''); setOperationError(null); setMessage(''); setDrawer(null); setErrors({});
       targetRef.current = next?.id || null; setTargetId(next?.id || null);
@@ -133,7 +146,7 @@ export default function App() {
     const fields = { ...inputs, ra_deg: String(next.ra_deg), dec_deg: String(next.dec_deg) };
     const validation = validateSearch(fields); setInputs(fields); setErrors(validation.errors);
     setMode('live'); setView('sequence');
-    if (!validation.query || capabilities?.archive_access !== 'available') { setDrawer('search'); return; }
+    if (!validation.query || health.status !== 'ready') { setDrawer('search'); return; }
     runSearch(validation.query, 'live');
   }
 
@@ -165,22 +178,38 @@ export default function App() {
     return runSearch(validation.query);
   }
 
+  async function refreshArchive(searchId, ticket = syncOwner.current.start()) {
+    setSearch(current => current.result?.search_id === searchId ? {...current,sync:{status:'checking'}} : current);
+    try {
+      const result = await syncObservations(searchId, ticket.signal);
+      if (!ticket.isCurrent()) return;
+      setSearch(current => current.result?.search_id === searchId ? {...current,result,
+        status:result.observations.length?'success':'empty',sync:{status:result.coverage_summary.archive_coverage?.collections_failed?.length?'partial':'ready'}} : current);
+    } catch (error) {
+      if (!ticket.isCurrent()) return;
+      setSearch(current => current.result?.search_id === searchId ? {...current,sync:{status:'unavailable',message:error.message}} : current);
+    }
+  }
+
   async function runSearch(query, requestMode = mode) {
-    if (search.status === 'loading' || (requestMode === 'live' && capabilities?.archive_access !== 'available')) return;
+    if (search.status === 'loading') return;
+    const effectiveMode = requestMode === 'live' ? 'local' : requestMode;
+    const syncTicket = syncOwner.current.start();
     setView('sequence');
     const ticket = owner.current.start();
     clearSequence(); setSelected([]); setBusy(''); setMessage(''); setOperationError(null);
     const linkedTarget = getCatalogueTarget(targetRef.current);
     const fieldTargetId = linkedTarget && query.ra_deg === linkedTarget.ra_deg && query.dec_deg === linkedTarget.dec_deg ? linkedTarget.id : null;
-    setSearch({ status: 'loading', result: null, query, error: null, targetId: fieldTargetId, source: requestMode });
+    setSearch({ status: 'loading', result: null, query, error: null, targetId: fieldTargetId, source: effectiveMode });
     try {
-      const result = await searchObservations(query, { mode: requestMode, scenario, signal: ticket.signal });
+      const result = await searchObservations(query, { mode: effectiveMode, scenario, signal: ticket.signal });
       if (!ticket.isCurrent()) return;
-      setSearch({ status: result.observations.length ? 'success' : 'empty', result, query, error: null, targetId: fieldTargetId, source: requestMode });
+      setSearch({ status: result.observations.length ? 'success' : 'empty', result, query, error: null, targetId: fieldTargetId, source: effectiveMode });
       setDrawer('observations');
+      if (effectiveMode === 'local') void refreshArchive(result.search_id, syncTicket);
     } catch (error) {
       if (!ticket.isCurrent()) return;
-      setSearch({ status: 'error', result: null, query, error, targetId: fieldTargetId, source: requestMode }); setDrawer('observations');
+      setSearch({ status: 'error', result: null, query, error, targetId: fieldTargetId, source: effectiveMode }); setDrawer('observations');
     }
   }
 
@@ -229,7 +258,7 @@ export default function App() {
   }
 
   function verify() {
-    if (fixture || !sequence || capabilities?.motion_verification !== 'available' || capabilities?.archive_access !== 'available') return;
+    if (fixture || !sequence || capabilities?.motion_verification !== 'available' || (search.source !== 'local' && capabilities?.archive_access !== 'available')) return;
     const observations = frames.map(frame => frame.observation);
     const issues = verificationIssues(observations, groups);
     if (issues.length) { setOperationError(new Error(issues.join(' '))); return; }
@@ -273,7 +302,7 @@ export default function App() {
       <SkyExplorer observations={search.targetId === targetId ? search.result?.observations || [] : []}
         onAddTarget={next => {setCatalogueTargets(current => [...current.filter(t => t.id !== next.id), next]); owner.current.cancel(); clearSequence(); setSearch(emptySearch); setSelected([]); setBusy(''); setDrawer(null); targetRef.current=next.id; setTargetId(next.id); setView('sky');}}
         targets={catalogueTargets} selectedTarget={target} onSelectTarget={selectTarget} onSearchTarget={searchTarget}
-        searchDisabled={capabilities?.archive_access !== 'available' || !!busy || search.status === 'loading'}
+        searchDisabled={health.status !== 'ready' || !!busy || search.status === 'loading'}
         observationContent={target && search.targetId === target.id ? <TargetObservationSummary search={search} sequence={sequence} frame={frames[displayedIndex]}
           fixture={fixture} onOpenSequence={() => navigate('observations')} /> : null} />
     </div>
@@ -290,7 +319,8 @@ export default function App() {
           {drawer === 'search' ? <SearchPanel inputs={inputs} onInputsChange={setInputs} errors={errors} onErrorsChange={setErrors}
             mode={mode} onModeChange={changeMode} scenario={scenario} onScenarioChange={changeScenario}
             loading={search.status === 'loading'} health={health} onSubmit={submitSearch} onReset={resetWorkspace} onClose={closeDrawer} />
-            : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={submitSearch} onSearchLocal={() => runSearch(search.query, 'local')}
+            : <SearchResults search={search} mode={mode} onClear={clearResults} onRetry={() => runSearch(search.query, fixture ? 'fixture' : 'remote')} onSearchLocal={() => runSearch(search.query, 'local')}
+              onSync={() => refreshArchive(search.result.search_id)}
               onSearchLocalField={query => {setInputs(Object.fromEntries(Object.entries(query).map(([key,value])=>[key,String(value)])));runSearch(query, 'local');}} selected={selected}
               onSelectedChange={changeSelection} onGenerate={generate} busy={!!busy || search.status === 'loading'} canProcess={canProcess} onClose={closeDrawer} />}
         </div>}

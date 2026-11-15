@@ -104,3 +104,90 @@ def test_no_coverage_offers_real_image_fields_without_replacing_query(tmp_path):
     for field in fields:
         assert archive.search(Search(**{k:field[k] for k in ['ra_deg','dec_deg','fov_arcmin']})).observations
     assert query.ra_deg == 133.81890825
+
+
+def test_archive_reconciliation_preserves_local_ids_and_deduplicates_exact_product(tmp_path):
+    from whylab.local_archive import align_results
+    from whylab.models import Observation, Provenance, SearchResult
+    filename = 'level2_2026W36_1A_0510_1D1_spx_l2b-v27-2026-252.fits'
+    local = Observation(id='local-file',product_id='local-file',exposure_id='spherex:exposure',
+        release='imported-local', observed_at='2026-09-02T00:00:00Z',
+        provenance=Provenance(archive='local',source_url='/api/observations/local-file/fits'),
+        quality={'label':'Barnards_Star_'+filename,'sha256':'unchanged'})
+    same = local.model_copy(update={'id':'remote-same','product_id':filename,'release':'spherex_dr1',
+        'quality':{},'provenance':Provenance(archive='IRSA',source_url='https://irsa.ipac.caltech.edu/ibe/data/spherex/'+filename)})
+    newer = same.model_copy(update={'id':'remote-version','product_id':filename.replace('v27','v28')})
+    before = SearchResult(observations=[local],coverage_summary={'source':'imported-local','complete':False})
+    duplicate = same.model_copy(update={'id':'remote-other-collection','release':'spherex_qr3'})
+    remote = SearchResult(observations=[same,duplicate,newer],coverage_summary={'complete':True})
+    result = align_results(before,remote,100)
+    assert [o.id for o in result.observations] == ['local-file','remote-version']
+    assert result.observations[0].quality['sha256']=='unchanged'
+    assert result.observations[0].quality['archive_match']['product_id']==filename
+    assert result.coverage_summary['archive_matches']==1
+    assert 'archive_match' not in before.observations[0].quality
+    again = align_results(result, remote, 100)
+    assert [o.id for o in again.observations] == ['local-file','remote-version']
+    assert again.coverage_summary['archive_matches']==1
+    assert len(align_results(before,remote,1).observations)==1
+    assert not align_results(before,remote,1).coverage_summary['complete']
+
+
+def test_sync_failure_keeps_local_search_and_success_reuses_same_session(tmp_path):
+    from whylab.models import SearchResult
+    path = tmp_path/'sample.fits'; fixture(path)
+    registry = ProductRegistry(tmp_path, {'sample':{'path':'sample.fits',
+        'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}})
+    class RecoveringArchive:
+        available = True
+        fail = True
+        def search(self, query):
+            if self.fail: raise TimeoutError('test archive unavailable')
+            return SearchResult(observations=[], coverage_summary={'complete':True})
+    remote = RecoveringArchive()
+    with TestClient(create_app(Settings(output_dir=tmp_path/'previews'),archive=remote,fits_registry=registry)) as client:
+        local = client.post('/api/v1/observations/search/local',json={'ra_deg':120,'dec_deg':20,'fov_arcmin':2}).json()
+        search_id = local['search_id']
+        response = client.post(f'/api/v1/observations/search/{search_id}/sync')
+        assert response.status_code==503
+        selection={'ra_deg':120,'dec_deg':20,'fov_arcmin':2,'search_id':search_id,'observation_ids':['sample']}
+        assert client.post('/api/v1/investigations',json=selection).status_code==201
+        remote.fail = False
+        response = client.post(f'/api/v1/observations/search/{search_id}/sync')
+        assert response.status_code==200, response.text
+        assert response.json()['search_id']==search_id
+        assert response.json()['observations'][0]['id']=='sample'
+        assert response.json()['coverage_summary']['source']=='local-and-archive'
+
+
+def test_slow_archive_sync_does_not_block_local_processing_worker(tmp_path):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    started, release, processed = threading.Event(), threading.Event(), threading.Event()
+    path = tmp_path/'sample.fits'; fixture(path)
+    registry = ProductRegistry(tmp_path, {'sample':{'path':'sample.fits',
+        'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}})
+    class SlowArchive:
+        available = True
+        def search(self, query):
+            started.set(); release.wait(5)
+            raise TimeoutError('synthetic archive unavailable')
+    class ProbeSequence:
+        available = True
+        def process(self, *args):
+            processed.set()
+            raise ValueError('Synthetic test ends after entering processing')
+    settings = Settings(output_dir=tmp_path/'previews',workers=1)
+    with TestClient(create_app(settings,archive=SlowArchive(),sequence=ProbeSequence(),fits_registry=registry)) as client:
+        query={'ra_deg':120,'dec_deg':20,'fov_arcmin':2}
+        local=client.post('/api/v1/observations/search/local',json=query).json()
+        with ThreadPoolExecutor(max_workers=1) as requests:
+            pending=requests.submit(client.post,f"/api/v1/observations/search/{local['search_id']}/sync")
+            try:
+                assert started.wait(2)
+                assert client.post('/api/v1/sequences',json={**query,'search_id':local['search_id'],
+                    'observation_ids':['sample']}).status_code==202
+                assert processed.wait(2), 'Background sync blocked the only processing worker'
+            finally:
+                release.set()
+            assert pending.result().status_code==503

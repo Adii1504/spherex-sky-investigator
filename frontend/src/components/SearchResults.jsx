@@ -4,10 +4,11 @@ import { formatUtc } from '../search.js';
 import { MetadataDetails } from './MetadataDetails.jsx';
 import {API_BASE} from '../api.js';
 
-export function SearchResults({ search, mode, onClear, onRetry, onSearchLocal, onSearchLocalField, selected = [], onSelectedChange, onGenerate, busy = false, canProcess = false, onClose }) {
+export function SearchResults({ search, mode, onClear, onRetry, onSync, onSearchLocal, onSearchLocalField, selected = [], onSelectedChange, onGenerate, busy = false, canProcess = false, onClose }) {
   const fixture = mode === 'fixture';
   const searching = search.status === 'loading';
   const local = search.source === 'local' || search.result?.coverage_summary?.source === 'imported-local';
+  const synced = search.result?.coverage_summary?.source === 'local-and-archive';
   const observations = search.result?.observations || [];
   const selectedObservations = observations.filter(observation => selected.includes(observation.id));
   const validDates = selectedObservations.filter(observation => observation.observed_at != null && observation.observed_at !== '')
@@ -21,7 +22,13 @@ export function SearchResults({ search, mode, onClear, onRetry, onSearchLocal, o
   return <section className="results-panel" id="observations" aria-labelledby="results-title" aria-busy={searching}>
     <div className="section-heading"><div><p className="eyebrow">02 / THE OBSERVATIONAL RECORD</p><h2 id="results-title" tabIndex="-1">Observations</h2></div>{onClose && <button type="button" className="icon-button" onClick={onClose} aria-label="Close observations">×</button>}</div>
     {fixture && <p className="fixture-notice"><strong>{FIXTURE_LABEL}</strong></p>}
-    {local && <p className="local-dataset-notice"><strong>Downloaded real observations · local search</strong><br/>Only imported files covering this sky position are searched. This is not a live IRSA result.</p>}
+    {local && <p className="local-dataset-notice"><strong>Downloaded real observations · {synced?'archive reconciled':'local search'}</strong><br/>{synced?'Local files are retained; matching archive metadata and additional observations are included.':'Your imported files load first. No live archive coverage is assumed.'}</p>}
+    {local && search.sync && <div className="archive-sync-status" role="status">
+      {search.sync.status==='checking' && <p>Checking IRSA in the background. Your downloaded observations remain usable.</p>}
+      {search.sync.status==='unavailable' && <p>IRSA sync is unavailable. Continue with your downloaded data; the app will retry while this page is active.</p>}
+      {['ready','partial'].includes(search.sync.status) && <p>{search.result.coverage_summary.archive_matches} local products matched; {search.result.coverage_summary.archive_added} additional archive observations added.{search.sync.status==='partial'&&' Some archive collections remain unavailable.'}</p>}
+      {onSync && <button type="button" disabled={search.sync.status==='checking'} onClick={onSync}>Sync with IRSA</button>}
+    </div>}
     <div role="status" aria-atomic="true">
       {search.status === 'idle' && <p className="muted">Open Sky regions and search to find dated observations.</p>}
       {searching && <p>Searching {fixture ? 'the selected fixture' : local ? 'downloaded observations' : 'the archive'}…</p>}
