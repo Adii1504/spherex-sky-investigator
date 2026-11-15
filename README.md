@@ -1,5 +1,18 @@
 # SPHEREx WhyLab backend
 
+For the free hosted submission, see [Render deployment](docs/render-deployment.md).
+The root `render.yaml` configures one Free Docker web service; the image includes
+the verified local observation dataset. Live archive availability and temporary
+investigation storage are explained in that guide.
+
+GitHub commit `9c2e3bb` is integrated. Run `python -m whylab --port 8010` and open
+<http://127.0.0.1:8010/processing/> for its scientific processing viewer, or `/`
+for the sky explorer. See [GitHub processing integration](docs/github-processing-integration.md).
+
+The supplied dataspace scripts and 21-observation dataset are integrated with the
+local viewer. See [dataspace integration](docs/dataspace-integration.md) for import,
+run commands, script workflows, and scientific limitations.
+
 Original minimal FastAPI backend for the 48-hour project. The starting workspace was empty: no teammate code or AGENTS.md was present. No science algorithms or real archive integration are included. Default health reports all three capabilities unavailable, and dependent endpoints return HTTP 503. Test data is synthetic and exists only in tests.
 
 ## Windows PowerShell
@@ -35,7 +48,7 @@ See [adapter contracts](docs/integration-contract.md) and [API workflow](docs/ap
 
 Docker: `docker build -t whylab .` then `docker run --rm -p 8000:8000 --env-file .env whylab`. Copy teammate modules into the image and install their dependencies before setting the factory. The supplied image includes only this backend. Use a TLS reverse proxy for a public deployment. Run ONE application process/replica. `/api/v1/health` is the readiness endpoint for the API process, with separate capability flags.
 
-All searches, jobs, investigations, and preview URL mappings are in memory and are LOST on restart. There is no database or authentication. Cache size limits each search/investigation store and retained job count; completed job records may expire. Attached sequence evidence and verification history are retained with investigations until restart. Full session stores return 503 rather than deleting investigations. Preview bytes have both per-file and total disk limits. Preview files from earlier runs count toward the disk budget but are not served; clean the controlled output directory while the application is stopped when needed. Use a dedicated directory, never a directory shared with another service.
+All searches, jobs, investigations, and preview URL mappings are in memory and are LOST on restart. There is no database or authentication. Unused search sessions and disposable generated previews rotate at capacity; repeated requests reuse sessions and results. Completed job records may expire. Attached sequence evidence and verification history are retained with investigations until restart. Saved investigations and their previews remain protected. If saved evidence itself reaches capacity, export it or increase the configured limit. Preview bytes have both per-file and total disk limits. Recognized disposable preview files from earlier runs are reclaimed automatically when needed. Original FITS data and unknown files are preserved. Use a dedicated directory, never a directory shared with another service.
 
 Workers and queue are bounded. Execution deadlines start when work begins; queued jobs may wait. Python threads cannot forcibly stop blocking native code: timed-out jobs stay failed and retain their worker slot until the adapter returns. Adapters MUST enforce upstream/native processing deadlines. Shutdown waits for running work. Sequence publication checks the deadline; late computation cannot publish a successful job. Progress is null because no adapter progress contract exists yet. Heavy retrieval, processing, and verification run in the executor; search awaits its bounded worker asynchronously.
 
@@ -44,3 +57,12 @@ Production hardening beyond this project scope includes durable state, request b
 ## Current acceptance boundary
 
 The fixture-backed automated pipeline covers search -> sequence -> preview -> investigation -> held-out verification -> evidence. It is plumbing validation, not proof of astronomical correctness. A real field cannot be completed until teammates provide archive search/cutouts, scientific sequence processing, and motion verification. The handoff contract lists the exact missing pieces and a real-field acceptance procedure.
+
+## Astronomy explorer extension
+
+See [local astronomy explorer](docs/astronomy-explorer.md) for the implemented sky,
+Three.js, catalogue lookup, FITS inspection and unverified candidate workflow,
+exact local installation/run commands, configuration, provider/cache/coordinate
+conventions, attribution and validation limits. No paid services are required.
+
+See [latency and recovery](docs/performance-recovery.md) for result reuse, automatic cache rotation, real download progress, and measured timings.

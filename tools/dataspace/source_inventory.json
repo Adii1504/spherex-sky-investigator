@@ -1,0 +1,269 @@
+{
+  "source": "User-supplied dataspace folder",
+  "files": [
+    {
+      "filename": "audit_spherex_products.py",
+      "sha256": "847303e7c3ca89ace2af186e67fc2024a184e5f0b2682ea4d01a3db13300632c"
+    },
+    {
+      "filename": "build_coverage_outputs.py",
+      "sha256": "d616aea7bbddd07d73c95c3622b35e9755284ba6df54207ba4b5ccdb8aec0e42"
+    },
+    {
+      "filename": "check_gaia_coordinates.py",
+      "sha256": "339895b9be107d9bd57f26bdc7c3f1cbbb294d32852a88477e6df35e8f65d081"
+    },
+    {
+      "filename": "correct_astrometry_candidate_audit.py",
+      "sha256": "ac9aec0b211f6c0531b6755c83b8bde17e0959d0528d910db019c0185cadfcfa"
+    },
+    {
+      "filename": "detection_check.py",
+      "sha256": "8e1906583b7d0219ac0beb9e90d4d17ca3598705310cf03d22dadd61ded9b1fc"
+    },
+    {
+      "filename": "extract_metadata.py",
+      "sha256": "a3b7d2970b19041eae7bf76d46526d43e626aee0155c8b810d01e4ae5cafef49"
+    },
+    {
+      "filename": "extract_wcs.py",
+      "sha256": "91baaf5446095a1a8de6fe860c9d6a9260a12aff93810c66ee84302d17d1eadd"
+    },
+    {
+      "filename": "fetch_verified_gaia_sources.py",
+      "sha256": "02be622c842b5c85d5314137dda7289c9621ee6bc78506192158db460292748d"
+    },
+    {
+      "filename": "finalize_dataset.py",
+      "sha256": "f0523e22d043acacfa9263c9975e290666b93fb6937ec3072288069e74962e97"
+    },
+    {
+      "filename": "find_rdraconis_url.py",
+      "sha256": "4b2150088a855581a9aee6024ce8509aeba7b087b54743283278266685126dd5"
+    },
+    {
+      "filename": "fix_downloads.py",
+      "sha256": "f5d55e0efa0a3b80cba452e335e94d9491586a66bb0f1da56acb077ee9e86bed"
+    },
+    {
+      "filename": "get_target_coordinates.py",
+      "sha256": "57413925cc746d97dcca18fed20b8935928331ecb0793b8293b90e4500cd262e"
+    },
+    {
+      "filename": "inspect_downloaded_fits.py",
+      "sha256": "3bb3cb1c21de3bc1e120b9aaa13500810f90b3f4fb6317233fd3a705b098350f"
+    },
+    {
+      "filename": "inspect_fits.py",
+      "sha256": "703e757f3a5245cb5a5038db7f78a1b16d9f679ae8d9cc3da7702b2f9db09468"
+    },
+    {
+      "filename": "inspect_proper_motion.py",
+      "sha256": "36775aee5783e8bc4bb52abcf2b4a09362c94fbf30259e408dcfceae9079e894"
+    },
+    {
+      "filename": "inspect_wavelength.py",
+      "sha256": "8732608911af1cbbe3c4ffc9f4416bd97835cdec5d5981f5de11cf011e821bcc"
+    },
+    {
+      "filename": "main.py",
+      "sha256": "b5a6147346671597f0861fe8a6fbe5b9caecdc032332ab2f1ed3b557b7791a13"
+    },
+    {
+      "filename": "prepare_astrometry_review.py",
+      "sha256": "4a6b8bfe021d1021be59ec7b4b84c31ec5b370a78efcaa43359bbf4947945315"
+    },
+    {
+      "filename": "prepare_clean_dataset.py",
+      "sha256": "87505a09546edda3566439abd58845b1990bd7ce2e9ed8c5304b4a809efc8fdf"
+    },
+    {
+      "filename": "propagate_target_coordinates.py",
+      "sha256": "2ce0dc16e3044530e69f6c56a9b9b61b4592349bff655531f10cda758298cf4b"
+    },
+    {
+      "filename": "query_astrometry_catalogues.py",
+      "sha256": "cce969d3c56c19e36b22cdeb0992c4e69c6b3a620646ec40530f63f80654a82e"
+    },
+    {
+      "filename": "retry_rdraconis_download.py",
+      "sha256": "e320fe7edd6345704eff5535a853471c58a5182414f5d2ab10e93f0d615e3bdd"
+    },
+    {
+      "filename": "spherex_astrometry.py",
+      "sha256": "f3def617a46b2f203e81d504acc4e6abaa52dd8601553ddea2ab91996b0ce38c"
+    },
+    {
+      "filename": "validate_target.py",
+      "sha256": "5edab59f66a5261c8dcf2297b462ba2041b718a01298e7ec510b7256471a789a"
+    },
+    {
+      "filename": "verify_target_astrometry.py",
+      "sha256": "14f16b4110e7718b7c9c2584eb34e6c1b5397f68a2a7da73f2c370586b2252c6"
+    },
+    {
+      "filename": "wise0855_catwise2020_requery.py",
+      "sha256": "2cd8f74bcc3e5862adc3274a292098b6053d6acd23455fbd4554eba4f7b35479"
+    },
+    {
+      "filename": "reference_metadata/all_observations.csv",
+      "sha256": "e97376bc28c1c476555b974141311815da6529381704545f70b292f38740580a"
+    },
+    {
+      "filename": "reference_metadata/astrometry_candidate_audit.csv",
+      "sha256": "f51ca4b119b34af6c41c547c5ae5e0e29e084d02fcdaa082a4294117527dbacf"
+    },
+    {
+      "filename": "reference_metadata/astrometry_candidate_audit_corrected.csv",
+      "sha256": "6b3ef9dc78bb2b104be33e915f0e43878006c0b9f8c965067b4db0179b42b9e3"
+    },
+    {
+      "filename": "reference_metadata/Barnards_Star_observations.csv",
+      "sha256": "f50d665f5fe89e91f77af048599fcf4be13c16b623d2bfaad88e159ae8e8a5cd"
+    },
+    {
+      "filename": "reference_metadata/clean_dataset_manifest.csv",
+      "sha256": "d38e4b4f24c82d4c35f902da73901c6d5e155384bf316d2b079a8d57b8965ad5"
+    },
+    {
+      "filename": "reference_metadata/clean_dataset_manifest_final.csv",
+      "sha256": "ee83e4dd0b091ca2426bdfe34624e7d42ec74c25840076e4825ecf6abc03e89d"
+    },
+    {
+      "filename": "reference_metadata/dataset_file_audit.csv",
+      "sha256": "b395efbcd110da6bee5d06eaabda5783e678d32727b0ef13136e1f80737077c0"
+    },
+    {
+      "filename": "reference_metadata/dataset_summary.txt",
+      "sha256": "a5b380279b3dfbba79828fe3ec57077cae80d772530bf8205ad37794fb3e5ac3"
+    },
+    {
+      "filename": "reference_metadata/detection_check.csv",
+      "sha256": "38ae8d7477cff3bba7e967eae9387bcba869661a50727958b6eda6605c2a4ccd"
+    },
+    {
+      "filename": "reference_metadata/duplicate_audit_final.csv",
+      "sha256": "a55e3ce56d1abc1ab3a64b4b366b9a9a176cd143f95a967b4cb9f3d5c06f77ef"
+    },
+    {
+      "filename": "reference_metadata/epsilon_indi_b_gaia_candidates.csv",
+      "sha256": "ff98bf56be88d83157eb37984713183689538d072e96688e0015be3b5051b11b"
+    },
+    {
+      "filename": "reference_metadata/Epsilon_Indi_B_observations.csv",
+      "sha256": "d73f6f12cfd06b681268902509f06288e820eedfb1e09fcea524f8367d5f5505"
+    },
+    {
+      "filename": "reference_metadata/excluded_files.csv",
+      "sha256": "ca5ba3a593ddb6b54b737244ecd0656254865fba362a775893464631153fc4c1"
+    },
+    {
+      "filename": "reference_metadata/excluded_files_final.csv",
+      "sha256": "5df694268a418eae8eb98ba8e66a01288ecdbf2b7b576183da0f020de5ae52a3"
+    },
+    {
+      "filename": "reference_metadata/extended_metadata.csv",
+      "sha256": "99405f79a851bac272b1b284385a18155accaca94653d9689b522e8cca763f8e"
+    },
+    {
+      "filename": "reference_metadata/fits_coverage_validation.csv",
+      "sha256": "57ab76d96cb3b5184dfa98630a51ae39e1c647518506ee25f908156ea5acc26f"
+    },
+    {
+      "filename": "reference_metadata/fits_inspection_report.csv",
+      "sha256": "57e15a902691fd9bd8a5d2ec5c986f939edaa4aef041e62aa3c065444ee100f0"
+    },
+    {
+      "filename": "reference_metadata/fits_metadata.csv",
+      "sha256": "7cfbf7d9e8fffb531765d39cd540a2609891fa62c873be315c7725ee16a1e05a"
+    },
+    {
+      "filename": "reference_metadata/gaia_dr3_candidates.csv",
+      "sha256": "571520d37068c6a9ad2e4ad0826eb1ade99dedaec71edd5338b0ce9320c7afa1"
+    },
+    {
+      "filename": "reference_metadata/observations.csv",
+      "sha256": "532775f125615ff6260b331d34c59ed3fd8e3156e6682035c80010e8832e881b"
+    },
+    {
+      "filename": "reference_metadata/product_audit_report.csv",
+      "sha256": "42ea70bed49a0527cb0719ebed8642ba85ada68bb550c64c4d7a6023fb4aeab9"
+    },
+    {
+      "filename": "reference_metadata/propagated_target_coordinates.csv",
+      "sha256": "f029eca6ab30178bb879a786e0459f42b09b6c9260e908f7a10ddcf8fdab433c"
+    },
+    {
+      "filename": "reference_metadata/proper_motion_measurements.csv",
+      "sha256": "e34668b14c466cceafa9e83c44087530640534aa661e7d4be51de9589b932dc3"
+    },
+    {
+      "filename": "reference_metadata/R_Draconis_observations.csv",
+      "sha256": "86565085043430ef1ae46d61ca890c93a14d7f1a77dc2a0ec21418418e980b44"
+    },
+    {
+      "filename": "reference_metadata/redownload_log.csv",
+      "sha256": "8da6feff20e0fd17b002ad08e40a7a10715c0dcbaca6e67730238408fe3a636c"
+    },
+    {
+      "filename": "reference_metadata/rw_aur_component_reference.csv",
+      "sha256": "af258e109ba951c5fe5015b7fd72f01d30a3a53f638df1a8506654c87ff546a8"
+    },
+    {
+      "filename": "reference_metadata/rw_aurigae_gaia_candidates.csv",
+      "sha256": "e7ede215945750c40aaeaaf9b541a8ca17ba0ef103dc7e3fdc17190cbbc9b8a5"
+    },
+    {
+      "filename": "reference_metadata/RW_Aurigae_observations.csv",
+      "sha256": "7dc078d6e31b4962c74a226d7cff0cee545519bc72c8926cb28a8f5861afd819"
+    },
+    {
+      "filename": "reference_metadata/target_astrometry_master.csv",
+      "sha256": "95ce82d4021f9ad1322a415632634d970341c5a677d61be6db17d35873463bb5"
+    },
+    {
+      "filename": "reference_metadata/target_astrometry_review.csv",
+      "sha256": "f8921d806f5c53c2c5dd3ed5350535fdf4a4111126543d898cd007385df73dd5"
+    },
+    {
+      "filename": "reference_metadata/target_coordinates.csv",
+      "sha256": "afb582444f2d13148a9eb25343e41a9b4c762df697d62b01b314b56b29928436"
+    },
+    {
+      "filename": "reference_metadata/target_coordinates_per_observation.csv",
+      "sha256": "4426cb8387b9b5ba1833af7e2a63ce1c98e6e7c6d1976fd7977a46e70184ecd4"
+    },
+    {
+      "filename": "reference_metadata/target_coverage_report.csv",
+      "sha256": "4046f89af25ccbd287c4512dbc314024510eb864dbdcee36e41b363611b4fd41"
+    },
+    {
+      "filename": "reference_metadata/target_validation.csv",
+      "sha256": "0e057f24414c57269f4155480fd0e83592c5358816ca2971f7193869b8b35fc2"
+    },
+    {
+      "filename": "reference_metadata/verified_gaia_sources.csv",
+      "sha256": "89241e0692c3d1f5979f382d2e4f97b6736f31da8c785428797b1ee5d017e1ae"
+    },
+    {
+      "filename": "reference_metadata/wcs_metadata.csv",
+      "sha256": "235cc6fe93bbc29556be44d89c44db1ea3974b5e0e088d6067abb184f3816336"
+    },
+    {
+      "filename": "reference_metadata/wise0855_catwise2020_raw.csv",
+      "sha256": "94d196c98048cf3e8e9153db161875b4138a5825ed09d28c2b8213e5441ae216"
+    },
+    {
+      "filename": "reference_metadata/wise0855_catwise2020_requery_audit.csv",
+      "sha256": "666b04c805697e2e6b89a3954fe744219d1c0e95ab1369dfb1e53a985c831e9b"
+    },
+    {
+      "filename": "reference_metadata/wise0855_catwise_candidates.csv",
+      "sha256": "7b2c6bf8826b66938d5205eaf81486fda3e4511d56defdb6246190ccbe0e7cd4"
+    },
+    {
+      "filename": "reference_metadata/WISE_0855_observations.csv",
+      "sha256": "ccf8ea50cf77cdf09e529adc2eb426ff8de66b2b4b4307b922b9bad7ad5cfe02"
+    }
+  ]
+}

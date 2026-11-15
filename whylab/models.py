@@ -26,6 +26,7 @@ class Provenance(Model):
     citation: str | None = None
 
 class Observation(Model):
+    footprint_stcs: str | None = Field(default=None, max_length=20000)
     id: str
     exposure_id: str
     observed_at: AwareDatetime

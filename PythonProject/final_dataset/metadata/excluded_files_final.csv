@@ -1,0 +1,5 @@
+filename,target_key,sha256,exclusion_reason
+level2_2025W19_2B_0101_1D3_spx_l2b-v27-2026-198.fits,,f510a56ec8ae98a1587c6ca8a5711c4f09b052eef7bcddf7f2f2b4e8b9ca93a9,Not a project target
+ra210.80227_dec+54.34895_level2_2025W19_2B_0101_1D3_spx_l2b-v27-2026-198.fits,,f510a56ec8ae98a1587c6ca8a5711c4f09b052eef7bcddf7f2f2b4e8b9ca93a9,Not a project target; Exact duplicate of level2_2025W19_2B_0101_1D3_spx_l2b-v27-2026-198.fits
+ra210.80227_dec+54.34895_level2_2025W19_2B_0101_1D6_spx_l2b-v27-2026-198.fits,,228144b9c2378dbd41da1372e6470f73145848adb5a5418804f8207e54598318,Not a project target
+ra210.80227_dec+54.34895_level2_2025W19_2B_0101_2D6_spx_l2b-v27-2026-198.fits,,615f3a6330bb5097e37d50ddcb030a862b000660e6fadaa9798c3c78d2c7f7a4,Not a project target

@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: spherexplore
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: WHYLAB_WORKERS
+        value: "1"
+      - key: WHYLAB_MAX_PENDING
+        value: "2"
+      - key: WHYLAB_CACHE_SIZE
+        value: "16"
+      - key: WHYLAB_MAX_ARCHIVE_CACHE_BYTES
+        value: "70000000"
+      - key: WHYLAB_MAX_SEQUENCE_BYTES
+        value: "70000000"

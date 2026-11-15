@@ -116,6 +116,7 @@ def test_partial_and_failure(context):
     result = wait(client, client.post("/api/v1/sequences", json=chosen).json()["job_id"])
     assert result["status"] == "succeeded"
     assert len(result["result"]["previews"]) == 2
+    assert result['progress']['completed']==2 and result['progress']['total']==3
     assert result["result"]["warnings"]
     def broken(*args): raise RuntimeError("C:/secret token=password")
     sequence.process = broken
@@ -184,6 +185,67 @@ def test_dynamic_upstream_errors(context):
     response = client.post("/api/v1/observations/search", json=SKY)
     assert response.status_code == 504
     assert response.json()["code"] == "upstream_timeout"
+
+
+def test_network_failure_explains_server_access_without_exposing_exception(context):
+    import httpx
+    client, archive, _, _ = context
+    def disconnected(query):
+        raise httpx.ConnectError("private upstream diagnostics and filesystem path")
+    archive.search = disconnected
+    response = client.post("/api/v1/observations/search", json=SKY)
+    assert response.status_code == 502
+    assert response.json()["code"] == "upstream_unreachable"
+    assert "server's network access" in response.json()["message"]
+    assert "private upstream" not in response.text
+
+
+def test_failed_observation_downloads_recover_on_retry_without_restart(context):
+    import httpx
+    client,archive,_,_=context
+    chosen=selection(client)
+    original=archive.cutout
+    def unavailable(*args):raise httpx.ConnectError('private connection diagnostic')
+    archive.cutout=unavailable
+    first=client.post('/api/v1/sequences',json=chosen).json()['job_id']
+    failed=wait(client,first)
+    assert failed['error']['code']=='upstream_unreachable'
+    assert 'private connection' not in str(failed)
+    archive.cutout=original
+    second=client.post('/api/v1/sequences',json=chosen).json()['job_id']
+    assert second!=first
+    assert wait(client,second)['status']=='succeeded'
+
+
+def test_upstream_http_status_is_reported_without_private_url(context):
+    import httpx
+    client, archive, _, _ = context
+    def rejected(query):
+        request = httpx.Request("GET", "https://irsa.ipac.caltech.edu/private?token=hidden")
+        response = httpx.Response(503, request=request)
+        raise httpx.HTTPStatusError("private upstream response",request=request,response=response)
+    archive.search = rejected
+    response = client.post("/api/v1/observations/search", json=SKY)
+    assert response.status_code == 502
+    assert response.json()["code"] == "upstream_http_error"
+    assert response.json()["details"]["upstream_status"] == 503
+    assert "hidden" not in response.text
+    assert 'NASA/IPAC IRSA' in response.json()['message']
+    assert 'restarting' in response.json()['message']
+
+
+def test_partial_search_sessions_do_not_hide_service_recovery(context):
+    client,archive,_,_=context
+    original=archive.search;calls=[]
+    def partial(query):
+        calls.append(1)
+        value=original(query)
+        value.coverage_summary.update(complete=False,collections_failed=[{'collection':'spherex_qr3','upstream_status':502}])
+        return value
+    archive.search=partial
+    first=client.post('/api/v1/observations/search',json=SKY).json()
+    second=client.post('/api/v1/observations/search',json=SKY).json()
+    assert len(calls)==2 and first['search_id']!=second['search_id']
 
 
 def test_missing_processing_capabilities(tmp_path):

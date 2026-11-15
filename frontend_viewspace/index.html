@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SPHEREx WhyLab · Scientific workspace</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="top-nav">
+    <div class="nav-left">
+      <div class="logo">
+        <span class="logo-title">SPHEREx</span>
+        <span class="logo-badge">WhyLab · Processing</span>
+      </div>
+    </div>
+    <div class="nav-center">
+      <div class="preset-selector-container">
+        <label for="presetSelect">Investigation:</label>
+        <select id="presetSelect" class="preset-select">
+          <option value="Barnards_Star" selected>Barnard's Star (NASA Real Level 2, ~10.4''/yr Proper Motion)</option>
+          <option value="WISE_0855">WISE 0855-0714 (NASA Real Level 2, Cold Rogue World)</option>
+          <option value="Epsilon_Indi_B">Epsilon Indi B (NASA Real Level 2, Brown Dwarf Binary)</option>
+          <option value="RW_Aurigae">RW Aurigae A (NASA Real Level 2, Classical T Tauri)</option>
+          <option value="R_Draconis">R Draconis (NASA Real Level 2, Mira Variable)</option>
+          <option value="synthetic_asteroid_sequence">Solar System Asteroid Discovery (4 Epochs)</option>
+          <option value="nasa_real_6bands">NASA Real SPHEREx 6-Band Composite (D1-D6)</option>
+        </select>
+        <button id="btnRunInvestigation" class="btn-primary">Run investigation</button>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a class="nav-link" href="/">Sky explorer</a><a class="nav-link" href="stars_universefinder.html">Decorative 3D starfield</a>
+      <button type="button" class="nav-link" id="btnUploadModal">Upload FITS</button>
+      <a href="docs" target="_blank" class="nav-link docs-link">API Docs</a>
+      <span class="status-indicator" id="apiStatus"><span class="status-dot"></span> Connecting…</span>
+    </div>
+  </header>
+
+  <!-- Main Viewport Area -->
+  <main class="viewer-main" id="viewerMain">
+    <!-- Viewport Canvas & Layers -->
+    <div class="viewport-container" id="viewportContainer">
+      <!-- Toolbar Overlays (Top-Left) -->
+      <div class="viewport-toolbar">
+        <div class="tour-stops-dropdown">
+          <label for="tourStopSelect">Target:</label>
+          <select id="tourStopSelect">
+            <option value="Barnards_Star" selected>Barnard's Star (10.4''/yr Proper Motion)</option>
+            <option value="WISE_0855">WISE 0855-0714 (Cold Rogue World)</option>
+            <option value="Epsilon_Indi_B">Epsilon Indi B (Brown Dwarf Binary)</option>
+            <option value="RW_Aurigae">RW Aurigae (T Tauri Star)</option>
+            <option value="R_Draconis">R Draconis (Mira Variable)</option>
+            <option value="asteroid">Asteroid 2025-SPX01</option>
+            <option value="about">About SPHEREx Survey</option>
+          </select>
+        </div>
+        <div class="view-controls"><button class="ctrl-btn" id="btnOpenDrawer" title="Show evidence" aria-label="Show evidence panel" aria-expanded="true" aria-controls="sideDrawer">Info</button>
+          <button class="ctrl-btn" id="btnResetView" title="Reset View">🏠</button>
+          <button class="ctrl-btn" id="btnZoomIn" title="Zoom In">+</button>
+          <button class="ctrl-btn" id="btnZoomOut" title="Zoom Out">−</button>
+          <button class="ctrl-btn" id="btnTogglePins" title="Toggle Hotspots">👁</button>
+          <button class="ctrl-btn" id="btnFitScreen" title="Fit to Screen">⛶</button>
+        </div>
+      </div>
+
+      <!-- Mode Selector Pills -->
+      <div class="layer-mode-bar">
+        <button class="mode-pill active" data-mode="composite">Aligned image / RGB</button>
+        <button class="mode-pill" data-mode="blink">Blink Comparator</button>
+        <button class="mode-pill" data-mode="difference">Signed Difference (B − A)</button>
+        <button class="mode-pill" data-mode="diagnostic">Astrometric Trajectory</button>
+      </div>
+
+      <!-- Image Canvas Container -->
+      <div class="image-stage" id="imageStage"><div class="stage-placeholder" id="stageMessage" role="status">Choose a dataset to begin.</div>
+        <img id="primaryImage" class="main-image" alt="SPHEREx Field View" hidden>
+        <!-- SVG Pin Overlay Layer -->
+        <svg id="pinOverlay" class="pin-overlay" viewBox="0 0 128 128" preserveAspectRatio="none">
+          <!-- Dynamic hotspot pins injected by app.js -->
+        </svg>
+      </div>
+
+      <div class="stage-status"><p id="frameMetadata" aria-live="off"></p><button type="button" class="btn-secondary" id="btnRetryProcessing" hidden>Retry investigation</button><button type="button" class="btn-secondary" id="btnCancelProcessing" hidden>Stop waiting</button></div>
+      <!-- Bottom Interactive Media Controls (for Blink/Difference mode) -->
+      <div class="bottom-controls" id="bottomControls" style="display:none">
+        <div class="blink-controls" id="blinkControls">
+          <button class="btn-ctrl" id="btnPlayPause">⏸ Pause</button>
+          <div class="speed-slider-wrap">
+            <span>Dwell Speed:</span>
+            <input type="range" aria-label="Blink frames per second" id="blinkSpeed" min="0.5" max="5.0" step="0.5" value="2.0">
+            <span id="speedValue">2.0 fps</span>
+          </div>
+          <div class="epoch-stepper">
+            <button class="btn-step" id="btnPrevEpoch" aria-label="Previous observation">◀</button>
+            <span id="epochLabel">Epoch 1 / 4</span>
+            <button class="btn-step" id="btnNextEpoch" aria-label="Next observation">▶</button>
+          </div>
+        </div>
+
+        <div class="difference-controls" id="diffControls" style="display: none;">
+          <label for="diffPairSelect">Difference pair:</label>
+          <select id="diffPairSelect">
+            <option value="1_to_2">Epoch 2 − Epoch 1</option>
+            <option value="2_to_3">Epoch 3 − Epoch 2</option>
+            <option value="3_to_4">Epoch 4 − Epoch 3</option>
+          </select>
+          <span class="diff-scale-info">Symmetric diverging scale (Coolwarm, centered on 0.0)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Side Information Drawer (ViewSpace Signature Drawer) -->
+    <aside class="side-drawer" id="sideDrawer">
+      <div class="drawer-header">
+        <div class="drawer-pagination">
+          <button class="btn-page" id="btnPrevDrawer">◀</button>
+          <span id="drawerPageIndicator">1 / 5</span>
+          <button class="btn-page" id="btnNextDrawer">▶</button>
+        </div>
+        <button class="btn-close-drawer" id="btnCloseDrawer" aria-label="Close evidence panel">✕</button>
+      </div>
+
+      <div class="drawer-body"><p id="processingNotice" role="status">Connecting to processing API…</p><details id="scientificNotes" hidden><summary id="warningSummary">Processing notes</summary><ul id="warningList"></ul></details>
+        <h2 class="target-title" id="targetTitle">Barnard's Star</h2>
+        <div class="target-subtitle" id="targetSubtitle">Exploratory scientific processing</div>
+
+        <!-- ViewSpace About This Target Section -->
+        <div class="drawer-section">
+          <h3>About This Target</h3>
+          <div class="info-field-list">
+            <div class="info-field-item">
+              <span class="info-field-label">Location:</span>
+              <span class="info-field-value" id="valLocationText">Unavailable</span>
+            </div>
+            <div class="info-field-item">
+              <span class="info-field-label">Distance from Earth:</span>
+              <span class="info-field-value" id="valDistanceText">Unavailable</span>
+            </div>
+            <div class="info-field-item">
+              <span class="info-field-label">Image Size:</span>
+              <span class="info-field-value" id="valImageSizeText">Unavailable</span>
+            </div>
+            <div class="info-field-item">
+              <span class="info-field-label">Observatories:</span>
+              <span class="info-field-value" id="valObservatoriesText">Unavailable</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Badges -->
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Location (RA, Dec)</span>
+            <span class="meta-value" id="valCoords">Unavailable</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Measured Motion</span>
+            <span class="meta-value highlight" id="valVelocity">Unavailable</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Signal-to-Noise (SNR)</span>
+            <span class="meta-value" id="valSNR">Unavailable</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Hypothesis Decision</span>
+            <span class="badge-outcome verified" id="valOutcome">Awaiting evidence</span>
+          </div>
+        </div>
+
+        <!-- Adopted Catalogue Astrometry Card -->
+        <div class="drawer-section" id="gaiaTruthSection">
+          <h3>Adopted catalogue astrometry</h3>
+          <div class="truth-card">
+            <div class="truth-row">
+              <span class="truth-label">Catalogue Source:</span>
+              <span class="truth-val" id="truthSourceId">Unavailable</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Reference Epoch:</span>
+              <span class="truth-val" id="truthRefEpoch">Unavailable</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Catalogue proper motion:</span>
+              <span class="truth-val highlight" id="truthPM">Unavailable</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Catalogue comparison:</span>
+              <span class="truth-val" id="truthResidual">Unavailable</span>
+            </div>
+            <div class="truth-row">
+              <span class="truth-label">Verification:</span>
+              <span class="badge-outcome verified" id="truthQuality">Unavailable</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Description Paragraph -->
+        <div class="drawer-section">
+          <h3>Astronomical Analysis</h3>
+          <p id="targetDescription">Choose a dataset to compute aligned images and exploratory evidence.</p>
+        </div>
+
+        <!-- Spectral / Observatories Breakdown -->
+        <div class="drawer-section">
+          <h3>SPHEREx Multi-Wavelength Observatories</h3>
+          <ul class="spectral-legend">
+            <li><span class="color-dot red"></span> <strong>Red (D5–D6, 4.4–5.0 µm):</strong> Thermal zodiacal dust & cold sub-stellar emission</li>
+            <li><span class="color-dot green"></span> <strong>Green (D3–D4, 1.6–3.8 µm):</strong> Water-ice, silicates, and stellar CO/CO2 absorption bands</li>
+            <li><span class="color-dot blue"></span> <strong>Blue (D1–D2, 0.75–1.6 µm):</strong> Reflected solar continuum & optical-to-NIR stellar flux</li>
+          </ul>
+        </div>
+
+        <!-- Interactive Tabs (Trajectory Diagnostic / SED Spectrum / Difference) -->
+        <div class="drawer-tabs">
+          <button class="drawer-tab active" data-tab="tabTrajectory">Trajectory Fit</button>
+          <button class="drawer-tab" data-tab="tabDifference">Difference Dipole</button>
+          <button class="drawer-tab" data-tab="tabSED">Photometric SED</button>
+          <button class="drawer-tab" data-tab="tabResiduals">Residuals & Data</button>
+        </div>
+
+        <div class="drawer-tab-content">
+          <!-- Tab 1: Trajectory Diagnostic -->
+          <div class="tab-pane active" id="tabTrajectory">
+            <div class="plot-container">
+              <img id="trajectoryPlot" alt="Astrometric Trajectory Diagnostic" hidden>
+            </div>
+            <p class="plot-caption">2-Panel Astrometric Analysis: Celestial motion track (left) and reserved epoch observed vs. predicted residual comparison against 2σ noise threshold (right).</p>
+          </div>
+
+          <!-- Tab 2: Difference Dipole -->
+          <div class="tab-pane" id="tabDifference">
+            <div class="plot-container">
+              <img id="dipolePlot" alt="Signed Difference Dipole" hidden>
+            </div>
+            <p class="plot-caption">Scientific Difference Image: Signed (B − A) showing signed intensity changes; wavelength differences and artefacts can mimic motion.</p>
+          </div>
+
+          <!-- Tab 3: SED Spectrum -->
+          <div class="tab-pane" id="tabSED">
+            <div class="plot-container">
+              <img id="sedPlot" alt="Spectral Energy Distribution" hidden>
+            </div>
+            <div class="sed-metrics">
+              <span>Spectral Index (α): <strong id="valSpectralIndex">Unavailable</strong></span>
+              <button class="btn-secondary" id="btnRefetchSED">Re-measure SED</button>
+            </div>
+          </div>
+
+          <!-- Tab 4: Residuals Table -->
+          <div class="tab-pane" id="tabResiduals">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Epoch</th>
+                  <th>Observed UTC</th>
+                  <th>RA (°)</th>
+                  <th>Dec (°)</th>
+                  <th>Residual</th>
+                </tr>
+              </thead>
+              <tbody id="tableMeasurements">
+                <!-- Injected via app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Export / Citation -->
+        <div class="drawer-footer">
+          <button class="btn-export" id="btnExportJSON">Download JSON Report</button>
+          <span class="credit">Credit: NASA / IPAC / SPHEREx / Gaia DR3 / WhyLab Team</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Upload Modal -->
+  <div class="modal" id="uploadModal" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="uploadTitle">Upload SPHEREx FITS cutouts</h3>
+        <button class="btn-close-modal" id="btnCloseModal" aria-label="Close upload dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Select multiple SPHEREx Level 2 MEF FITS files or astronomical image frames (.fits) to execute automated ingestion, reprojection, differencing, and hypothesis testing.</p>
+        <label for="fitsFileInput">FITS files · up to 12 files, 50 MB each, 100 MB total</label><p id="uploadError" role="alert" hidden></p><input type="file" id="fitsFileInput" multiple accept=".fits,.fits.gz,.fit">
+        <div class="form-group">
+          <label for="inputTargetRA">Target RA in degrees (optional):</label>
+          <input type="number" id="inputTargetRA" min="0" max="359.999999999" step="any" placeholder="e.g. 150.006">
+        </div>
+        <div class="form-group">
+          <label for="inputTargetDec">Target Dec in degrees (optional):</label>
+          <input type="number" id="inputTargetDec" min="-90" max="90" step="any" placeholder="e.g. 2.006">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnCancelUpload">Cancel</button>
+        <button class="btn-primary" id="btnSubmitUpload">Process & Analyze</button>
+      </div>
+    </div>
+  </div>
+
+  <script>document.querySelector(".docs-link").href=location.pathname.startsWith("/processing")?"/processing/docs":"/docs";</script>
+  <script src="app.js"></script>
+</body>
+</html>

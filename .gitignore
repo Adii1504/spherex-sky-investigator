@@ -3,6 +3,16 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .data/
+/previews/
 .env
 node_modules/
 frontend/dist/
+# Local telescope products; generated FITS artifacts live under ignored .data/.
+*.fits
+*.fits.gz
+# Bundled submission data: checked against final_dataset/SHA256SUMS.txt at build.
+!PythonProject/final_dataset/fits/*.fits
+!backend/processing/sample_data/*cutout.fits
+!backend/processing/sample_data/sequence/*.fits
+.mplcache/
+*.log

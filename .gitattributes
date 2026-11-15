@@ -1,0 +1,5 @@
+# Scientific products must retain exact bytes for checksum verification.
+*.fits binary
+*.fits.gz binary
+# Metadata is covered by SHA256SUMS too; preserve its original line endings.
+/PythonProject/final_dataset/** -text

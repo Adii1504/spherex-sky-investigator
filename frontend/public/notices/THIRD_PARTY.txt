@@ -1,0 +1,31 @@
+SPHEREx WhyLab astronomy explorer - third-party notices
+
+Aladin Lite 3.8.2 by CDS, Strasbourg: LGPL v3 library license (bundled LICENSE
+and COPYING.LESSER), incorporating GPL v3. Its package.json license tag says
+GPL-3; the complete supplied LGPL and GPL texts are retained here as
+Aladin-LGPL-3.txt and Aladin-GPL-3.txt. No library code was modified.
+Source: https://github.com/cds-astro/aladin-lite/tree/3.8.2
+Keep the Aladin logo and link visible on the map.
+
+Three.js: MIT, see Three-MIT.txt; https://github.com/mrdoob/three.js
+React / React DOM: MIT, see React-MIT.txt; https://github.com/facebook/react
+Vite: MIT; https://github.com/vitejs/vite
+Python backend retains FastAPI (MIT), Pydantic (MIT), Uvicorn (BSD-3-Clause),
+HTTPX (BSD-3-Clause), Astropy (BSD-3-Clause), SciPy (BSD-3-Clause),
+NumPy (BSD-3-Clause), Pillow (HPND) and truststore (MIT).
+See each installed distribution's license; no dependency licenses are replaced.
+
+Catalogue snapshot: existing five supplied SIMBAD/CDS entries, checked/retrieved
+2026-11-14, with coordinate bibliography and record links in each entry.
+SIMBAD: Wenger et al. 2000, A&AS 143, 9; https://simbad.cds.unistra.fr/
+Use the catalogue references for scientific attribution. No detection or distance
+is inferred from these entries. This application does not relicense provider data.
+
+DSS2 imagery: Digitized Sky Survey - STScI/NASA; coloured and HEALPix-processed
+by CDS, served via the ESA HiPS mirror. Follow the original DSS use conditions:
+https://archive.stsci.edu/dss/copyright.html
+https://skies.esac.esa.int/DSSColor/properties
+
+SPHEREx archive products: NASA/IPAC Infrared Science Archive (IRSA), Caltech/IPAC.
+https://irsa.ipac.caltech.edu/Missions/spherex.html
+User-supplied FITS evidence is not assigned a catalogue source by this explorer.

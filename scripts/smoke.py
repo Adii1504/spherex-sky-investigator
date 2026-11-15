@@ -44,7 +44,10 @@ def main():
                     assert b'SPHEREx WhyLab' in response.read()
                 assert set(health["capabilities"].values()) == {"unavailable"}
                 with opener.open(base + "/openapi.json", timeout=2) as response:
-                    assert len(json.load(response)["paths"]) == 8
+                    paths = json.load(response)["paths"]
+                    assert len(paths) == 13
+                    assert "/api/observations/{product_id}/preview" in paths
+                    assert "/api/observations/{product_id}/quality" in paths
                 request = urllib.request.Request(base + "/api/v1/observations/search", data=json.dumps({"ra_deg": 12, "dec_deg": -5, "fov_arcmin": 2}).encode(), headers={"Content-Type": "application/json"})
                 try:
                     opener.open(request, timeout=2)
@@ -52,7 +55,7 @@ def main():
                 except urllib.error.HTTPError as error:
                     assert error.code == 503
                     assert json.load(error)["code"] == "capability_unavailable"
-                print("PASS: Uvicorn startup, HTTP health, React HTML, OpenAPI (8 paths), explicit archive 503")
+                print("PASS: Uvicorn startup, HTTP health, React HTML, OpenAPI (13 paths including targets/FITS), explicit archive 503")
             finally:
                 if server.poll() is None:
                     server.stdin.write(b"x")

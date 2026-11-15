@@ -4,6 +4,9 @@ from pathlib import Path
 
 @dataclass
 class Settings:
+    simbad_tap_url: str = "https://simbad.cfa.harvard.edu/simbad/sim-tap/sync"
+    catalog_hosts: list[str] = field(default_factory=lambda: ["simbad.cds.unistra.fr", "simbad.cfa.harvard.edu"])
+    irsa_sia_url: str = "https://irsa.ipac.caltech.edu/SIA"
     max_fov_arcmin: float = 30
     max_observations: int = 100
     workers: int = 2
@@ -13,7 +16,7 @@ class Settings:
     max_preview_bytes: int = 10_000_000
     max_output_bytes: int = 100_000_000
     max_sequence_bytes: int = 100_000_000
-    max_cutout_bytes: int = 50_000_000
+    max_cutout_bytes: int = 70_000_000
     max_archive_cache_bytes: int = 100_000_000
     preview_pixels: int = 192
     archive_collections: list[str] = field(default_factory=lambda: ["spherex_dr1", "spherex_qr3"])
@@ -37,7 +40,8 @@ class Settings:
         for key in cls.__dataclass_fields__:
             raw = os.getenv("WHYLAB_" + key.upper())
             if raw is None: continue
-            if key in ("cors_origins", "trusted_hosts", "archive_collections"): values[key] = [s.strip() for s in raw.split(",") if s.strip()]
+            if key in ("cors_origins", "trusted_hosts", "archive_collections", "catalog_hosts"): values[key] = [s.strip() for s in raw.split(",") if s.strip()]
+            elif key in ("simbad_tap_url", "irsa_sia_url"): values[key] = raw
             elif key in ("output_dir", "frontend_dir"): values[key] = Path(raw)
             elif key in ("timeout_seconds", "max_fov_arcmin"): values[key] = float(raw)
             else: values[key] = int(raw)

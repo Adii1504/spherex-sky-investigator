@@ -1,0 +1,6 @@
+target,ra_deg,dec_deg,coord_epoch_jyear,pm_ra_cosdec_masyr,pm_dec_masyr,parallax_mas,radial_velocity_kms,astrometry_source,source_id,ruwe,status,notes
+Barnard's Star,269.448503,4.73942,2016.0,-801.550978,10362.394207,546.97594,-110.468224,Gaia DR3,4472832130942575872,1.084851,GOOD_GAIA_SOLUTION,Gaia DR3 astrometry; measured radial velocity available.
+Epsilon Indi B,331.076453,-56.793812,2016.0,3981.976663,-2466.831815,270.658032,,Gaia DR3,6412596012146801152,4.295541,PROVISIONAL_HIGH_RUWE,High RUWE; verify whether this solution represents the intended combined Ba/Bb system. RV unavailable.
+R Draconis,248.167378,66.755007,2016.0,-20.642812,6.148819,1.250918,,Gaia DR3,1648328016354496384,1.297982,GAIA_RV_MISSING,Gaia DR3 solution; RV unavailable. Initial propagation will omit perspective correction.
+WISE 0855,133.81890825,-7.247048,,-8123.7,673.2,,,SIMBAD / CatWISE reference,,,EPOCH_UNVERIFIED,Starting coordinates and proper motion need a verified catalogue reference epoch.
+RW Aurigae,76.95652603458333,30.401438173888888,,7.23,-20.33,,,SIMBAD,,,EPOCH_AND_MATCH_UNVERIFIED,Gaia crossmatch was ambiguous. Verify component-specific astrometry and reference epoch.

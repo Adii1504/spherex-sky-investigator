@@ -4,3 +4,13 @@
 .data
 __pycache__
 .pytest_cache
+**/node_modules
+frontend/dist
+**/__pycache__
+**/.pytest_cache
+.codex
+.agents
+.aws
+previews
+backend/processing/sample_data/nasa_spherex_l2_full.fits
+*.log
